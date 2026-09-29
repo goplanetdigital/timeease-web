@@ -1,20 +1,14 @@
 import Link from "next/link";
-
-const solutions = [
-  {
-    slug: "bulk-invoice-data-extraction-to-excel",
-    title: "Bulk invoice data extraction to Excel",
-    description:
-      "A practical workflow for turning recurring invoice batches into structured spreadsheet output.",
-  },
-];
+import { getSeoPages } from "@/lib/seo-pages";
 
 export const metadata = {
   title: "Solutions | TimeEase",
   description: "Practical document automation solutions from TimeEase.",
 };
 
-export default function SolutionsPage() {
+export default async function SolutionsPage() {
+  const solutions = await getSeoPages();
+
   return (
     <main className="page-shell">
       <section className="page-header">
@@ -27,17 +21,35 @@ export default function SolutionsPage() {
         </p>
       </section>
 
-      <section className="solution-list">
-        {solutions.map((item) => (
-          <Link className="solution-card" href={`/solutions/${item.slug}`} key={item.slug}>
-            <div>
-              <h2>{item.title}</h2>
-              <p>{item.description}</p>
-            </div>
-            <span>Read →</span>
-          </Link>
-        ))}
-      </section>
+      {solutions.length === 0 ? (
+        <section className="card">
+          <h2>New solution guides are being reviewed.</h2>
+          <p>
+            TimeEase only publishes solution pages after they pass QA review.
+            Check back soon, or view the current TimeEase products now.
+          </p>
+          <a
+            className="button primary"
+            href="https://payhip.com/TimeEase"
+            target="_blank"
+            rel="noreferrer"
+          >
+            View Products
+          </a>
+        </section>
+      ) : (
+        <section className="solution-list">
+          {solutions.map((item) => (
+            <Link className="solution-card" href={`/solutions/${item.slug}`} key={item.slug}>
+              <div>
+                <h2>{item.h1}</h2>
+                <p>{item.meta_description}</p>
+              </div>
+              <span>Read →</span>
+            </Link>
+          ))}
+        </section>
+      )}
     </main>
   );
 }
