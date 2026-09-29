@@ -2,6 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSeoPage } from "@/lib/seo-pages";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function generateMetadata({
   params,
 }: {
@@ -10,10 +13,14 @@ export async function generateMetadata({
   const { slug } = await params;
   const page = await getSeoPage(slug);
 
-  if (!page) return {};
+  if (!page) {
+    return {
+      title: "Solution not found | TimeEase",
+    };
+  }
 
   return {
-    title: `${page.seo_title} | TimeEase`,
+    title: page.seo_title,
     description: page.meta_description,
   };
 }
@@ -57,7 +64,9 @@ export default async function SolutionPage({
             <h2>How it works</h2>
             <ol>
               {page.solution_steps.map((step, index) => (
-                <li key={index}><p>{step}</p></li>
+                <li key={index}>
+                  <p>{step}</p>
+                </li>
               ))}
             </ol>
           </div>
@@ -68,7 +77,9 @@ export default async function SolutionPage({
             <h2>Common mistakes to avoid</h2>
             <ul>
               {page.common_mistakes.map((item, index) => (
-                <li key={index}><p>{item}</p></li>
+                <li key={index}>
+                  <p>{item}</p>
+                </li>
               ))}
             </ul>
           </div>
