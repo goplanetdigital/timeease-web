@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { getSeoPages } from "@/lib/seo-pages";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata = {
   title: "Solutions | TimeEase",
   description: "Practical document automation solutions from TimeEase.",
@@ -40,7 +43,11 @@ export default async function SolutionsPage() {
       ) : (
         <section className="solution-list">
           {solutions.map((item) => (
-            <Link className="solution-card" href={`/solutions/${item.slug}`} key={item.slug}>
+            <Link
+              className="solution-card"
+              href={`/solutions/${item.slug}`}
+              key={item.slug}
+            >
               <div>
                 <h2>{item.h1}</h2>
                 <p>{item.meta_description}</p>
