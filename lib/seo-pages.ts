@@ -35,7 +35,7 @@ const SEO_API_URL =
 export async function getSeoPages(): Promise<SeoPage[]> {
   try {
     const response = await fetch(SEO_API_URL, {
-      next: { revalidate: 300 },
+      cache: "no-store",
     });
 
     if (!response.ok) {
@@ -50,7 +50,10 @@ export async function getSeoPages(): Promise<SeoPage[]> {
     }
 
     return data.pages.filter(
-      (page) => page.page_status === "APPROVED" && page.slug && page.h1
+      (page) =>
+        page.page_status === "APPROVED" &&
+        Boolean(page.slug?.trim()) &&
+        Boolean(page.h1?.trim())
     );
   } catch (error) {
     console.error("Failed to load TimeEase SEO pages:", error);
@@ -59,6 +62,10 @@ export async function getSeoPages(): Promise<SeoPage[]> {
 }
 
 export async function getSeoPage(slug: string): Promise<SeoPage | undefined> {
+  const normalizedSlug = decodeURIComponent(slug).trim().toLowerCase();
   const pages = await getSeoPages();
-  return pages.find((page) => page.slug === slug);
+
+  return pages.find(
+    (page) => String(page.slug || "").trim().toLowerCase() === normalizedSlug
+  );
 }
