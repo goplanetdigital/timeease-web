@@ -12,17 +12,17 @@ export default function HomePage() {
           procurement, and operations teams.
         </p>
         <div className="hero-actions">
-          <Link className="button primary" href="/solutions">
-            Explore solutions
-          </Link>
           <a
-            className="button secondary"
+            className="button primary"
             href="https://payhip.com/TimeEase"
             target="_blank"
             rel="noreferrer"
           >
-            View TimeEase products
+            View Products
           </a>
+          <Link className="button secondary" href="/solutions">
+            Explore Solutions
+          </Link>
         </div>
       </section>
 
