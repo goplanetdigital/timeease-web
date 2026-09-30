@@ -151,14 +151,22 @@ export default async function SolutionPage({
 
   if (!page) notFound();
 
+  const isPurchaseOrderPage = slug === "purchase-order-pdf-to-excel";
+  const displayTitle = isPurchaseOrderPage
+    ? "Purchase Order PDF to Excel"
+    : page.h1;
+  const displaySubtitle = isPurchaseOrderPage
+    ? "Extract PO fields and line items into review-ready Excel / CSV."
+    : page.intro;
+
   return (
     <main className="page-shell article-shell">
       <Link className="back-link" href="/solutions">← All solutions</Link>
 
       <article>
         <div className="eyebrow">TimeEase Solution</div>
-        <h1>{page.h1}</h1>
-        <p className="article-intro">{page.intro}</p>
+        <h1 className="solution-hero-title">{displayTitle}</h1>
+        <p className="article-intro solution-hero-subtitle">{displaySubtitle}</p>
 
         <HeroGraphic />
 
