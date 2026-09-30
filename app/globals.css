@@ -369,3 +369,47 @@ p { color: var(--muted); font-size: 18px; line-height: 1.7; }
     min-height: 190px;
   }
 }
+
+
+/* Solution hero refinement */
+.article-shell {
+  max-width: 980px;
+}
+
+.solution-hero-title {
+  max-width: 760px;
+  margin-bottom: 18px;
+  font-size: clamp(46px, 6vw, 68px);
+  line-height: 1;
+}
+
+.solution-hero-subtitle {
+  max-width: 760px;
+  margin-bottom: 0;
+  font-size: 21px;
+  line-height: 1.55;
+}
+
+.visual-hero {
+  width: 100%;
+  margin-top: 32px;
+  padding: 36px;
+}
+
+@media (max-width: 800px) {
+  .article-shell {
+    max-width: 100%;
+  }
+
+  .solution-hero-title {
+    font-size: clamp(40px, 12vw, 56px);
+  }
+
+  .solution-hero-subtitle {
+    font-size: 18px;
+  }
+
+  .visual-hero {
+    padding: 22px;
+  }
+}
