@@ -1,35 +1,184 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getSeoPage } from "@/lib/seo-pages";
+import { getSeoPage, type SeoPage } from "@/lib/seo-pages";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-function HeroGraphic() {
+type VisualConfig = {
+  shortTitle: string;
+  subtitle: string;
+  documentLabel: string;
+  documentCode: string;
+  documentExample: string;
+  fieldLabels: [string, string, string];
+  outputTitle: string;
+  columns: [string, string, string, string];
+  rows: [string, string, string, string][];
+  workflow: string[];
+};
+
+function getVisualConfig(page: SeoPage, slug: string): VisualConfig {
+  const source = [
+    slug,
+    page.primary_keyword || "",
+    page.h1 || "",
+    page.seo_title || "",
+    page.meta_description || "",
+  ].join(" ").toLowerCase();
+
+  if (source.includes("purchase order") || source.includes(" po ")) {
+    return {
+      shortTitle: "Purchase Order PDF to Excel",
+      subtitle: "Extract PO fields and line items into review-ready Excel / CSV.",
+      documentLabel: "PURCHASE ORDER",
+      documentCode: "PO-10458",
+      documentExample: "Acme Supplies",
+      fieldLabels: ["PO fields", "Line items", "Review flags"],
+      outputTitle: "Excel / CSV",
+      columns: ["PO", "Vendor", "Item", "Qty"],
+      rows: [
+        ["10458", "Acme", "001", "10"],
+        ["10458", "Acme", "002", "5"],
+        ["10458", "Acme", "003", "20"],
+      ],
+      workflow: [
+        "Upload PO PDF",
+        "Extract PO fields",
+        "Extract line items",
+        "Flag uncertain values",
+        "Export Excel / CSV",
+      ],
+    };
+  }
+
+  if (source.includes("invoice")) {
+    return {
+      shortTitle: "Invoice PDF to Excel",
+      subtitle: "Turn invoice headers and line items into review-ready spreadsheet data.",
+      documentLabel: "INVOICE",
+      documentCode: "INV-20841",
+      documentExample: "Northstar Trading",
+      fieldLabels: ["Invoice fields", "Line items", "Review flags"],
+      outputTitle: "Excel / CSV",
+      columns: ["Invoice", "Supplier", "Item", "Total"],
+      rows: [
+        ["20841", "Northstar", "A01", "$420"],
+        ["20841", "Northstar", "A02", "$185"],
+        ["20841", "Northstar", "A03", "$96"],
+      ],
+      workflow: [
+        "Upload invoice PDF",
+        "Extract invoice fields",
+        "Extract line items",
+        "Flag uncertain values",
+        "Export Excel / CSV",
+      ],
+    };
+  }
+
+  if (source.includes("rfq") || source.includes("quotation") || source.includes("quote")) {
+    return {
+      shortTitle: "RFQ & Quotation Data to Excel",
+      subtitle: "Structure supplier quote fields into spreadsheet-ready data for review.",
+      documentLabel: "SUPPLIER QUOTE",
+      documentCode: "RFQ-3107",
+      documentExample: "Supplier Response",
+      fieldLabels: ["Quote fields", "Price rows", "Review flags"],
+      outputTitle: "Comparison-ready CSV",
+      columns: ["Supplier", "Item", "Price", "Lead time"],
+      rows: [
+        ["Alpha", "A01", "$120", "7d"],
+        ["Beta", "A01", "$126", "5d"],
+        ["Gamma", "A01", "$118", "9d"],
+      ],
+      workflow: [
+        "Upload supplier PDFs",
+        "Extract quote fields",
+        "Structure price rows",
+        "Flag uncertain values",
+        "Export Excel / CSV",
+      ],
+    };
+  }
+
+  if (source.includes("table") || source.includes("spreadsheet")) {
+    return {
+      shortTitle: "PDF Tables to Spreadsheet",
+      subtitle: "Convert supported document tables into structured, review-ready rows.",
+      documentLabel: "PDF TABLE",
+      documentCode: "TABLE-001",
+      documentExample: "Structured source",
+      fieldLabels: ["Table fields", "Rows", "Review flags"],
+      outputTitle: "Spreadsheet",
+      columns: ["Field 1", "Field 2", "Field 3", "Value"],
+      rows: [
+        ["A", "North", "001", "42"],
+        ["B", "South", "002", "18"],
+        ["C", "West", "003", "27"],
+      ],
+      workflow: [
+        "Upload document",
+        "Identify table fields",
+        "Extract structured rows",
+        "Flag uncertain values",
+        "Export spreadsheet",
+      ],
+    };
+  }
+
+  return {
+    shortTitle: page.h1,
+    subtitle: page.intro,
+    documentLabel: "BUSINESS DOCUMENT",
+    documentCode: "DOC-001",
+    documentExample: "Supported document",
+    fieldLabels: ["Document fields", "Structured rows", "Review flags"],
+    outputTitle: "Excel / CSV",
+    columns: ["Field", "Source", "Row", "Value"],
+    rows: [
+      ["A", "Document", "001", "42"],
+      ["B", "Document", "002", "18"],
+      ["C", "Document", "003", "27"],
+    ],
+    workflow: [
+      "Upload document",
+      "Choose required fields",
+      "Extract structured data",
+      "Flag uncertain values",
+      "Export Excel / CSV",
+    ],
+  };
+}
+
+function HeroGraphic({ config }: { config: VisualConfig }) {
   return (
-    <div className="visual-card visual-hero" aria-label="Purchase order PDF to structured Excel workflow">
+    <div
+      className="visual-card visual-hero"
+      aria-label={`${config.documentLabel} to ${config.outputTitle} workflow`}
+    >
       <div className="visual-column">
         <div className="visual-doc">
           <div className="visual-doc-badge">PDF</div>
-          <strong>PURCHASE ORDER</strong>
-          <span>PO-10458</span>
-          <span>Acme Supplies</span>
+          <strong>{config.documentLabel}</strong>
+          <span>{config.documentCode}</span>
+          <span>{config.documentExample}</span>
           <div className="visual-lines">
             <i />
             <i />
             <i />
           </div>
         </div>
-        <div className="visual-caption">Purchase Order PDF</div>
+        <div className="visual-caption">{config.documentLabel} PDF</div>
       </div>
 
       <div className="visual-arrow">→</div>
 
       <div className="visual-process">
         <div className="visual-process-core">✦</div>
-        <div className="visual-process-item">PO fields</div>
-        <div className="visual-process-item">Line items</div>
-        <div className="visual-process-item">Review flags</div>
+        {config.fieldLabels.map((label) => (
+          <div className="visual-process-item" key={label}>{label}</div>
+        ))}
       </div>
 
       <div className="visual-arrow">→</div>
@@ -38,20 +187,16 @@ function HeroGraphic() {
         <div className="visual-sheet">
           <div className="visual-sheet-head">
             <span className="excel-chip">X</span>
-            <strong>Excel / CSV</strong>
+            <strong>{config.outputTitle}</strong>
           </div>
           <div className="visual-grid-row visual-grid-header">
-            <span>PO</span><span>Vendor</span><span>Item</span><span>Qty</span>
+            {config.columns.map((column) => <span key={column}>{column}</span>)}
           </div>
-          <div className="visual-grid-row">
-            <span>10458</span><span>Acme</span><span>001</span><span>10</span>
-          </div>
-          <div className="visual-grid-row">
-            <span>10458</span><span>Acme</span><span>002</span><span>5</span>
-          </div>
-          <div className="visual-grid-row">
-            <span>10458</span><span>Acme</span><span>003</span><span>20</span>
-          </div>
+          {config.rows.map((row, index) => (
+            <div className="visual-grid-row" key={index}>
+              {row.map((cell, cellIndex) => <span key={cellIndex}>{cell}</span>)}
+            </div>
+          ))}
         </div>
         <div className="visual-caption">Structured output</div>
       </div>
@@ -59,7 +204,7 @@ function HeroGraphic() {
   );
 }
 
-function ComparisonGraphic() {
+function ComparisonGraphic({ config }: { config: VisualConfig }) {
   return (
     <div className="comparison-visual" aria-label="Manual copy paste compared with TimeEase">
       <div className="comparison-panel comparison-manual">
@@ -73,7 +218,7 @@ function ComparisonGraphic() {
         <div className="comparison-tags">
           <span>Copy-paste</span>
           <span>Slow</span>
-          <span>Errors</span>
+          <span>Error-prone</span>
         </div>
       </div>
 
@@ -81,11 +226,11 @@ function ComparisonGraphic() {
         <div className="comparison-kicker">With TimeEase</div>
         <h3>Turn supported documents into review-ready rows</h3>
         <div className="comparison-stack">
-          <div className="mini-doc">PDF</div>
+          <div className="mini-doc">{config.documentLabel.split(" ")[0]}</div>
           <span>→</span>
           <div className="mini-process">✦</div>
           <span>→</span>
-          <div className="mini-sheet">Excel / CSV</div>
+          <div className="mini-sheet">{config.outputTitle}</div>
         </div>
         <div className="comparison-tags">
           <span>Structured output</span>
@@ -97,24 +242,18 @@ function ComparisonGraphic() {
   );
 }
 
-function WorkflowGraphic() {
-  const steps = [
-    ["1", "Upload PO PDF"],
-    ["2", "Extract PO fields"],
-    ["3", "Extract line items"],
-    ["4", "Flag uncertain values"],
-    ["5", "Export Excel / CSV"],
-  ];
-
+function WorkflowGraphic({ config }: { config: VisualConfig }) {
   return (
     <div className="workflow-visual" aria-label="Five step TimeEase document workflow">
-      {steps.map(([number, label], index) => (
+      {config.workflow.map((label, index) => (
         <div className="workflow-step-wrap" key={label}>
           <div className="workflow-step">
-            <div className="workflow-number">{number}</div>
+            <div className="workflow-number">{index + 1}</div>
             <div className="workflow-label">{label}</div>
           </div>
-          {index < steps.length - 1 && <div className="workflow-connector">→</div>}
+          {index < config.workflow.length - 1 && (
+            <div className="workflow-connector">→</div>
+          )}
         </div>
       ))}
     </div>
@@ -151,13 +290,7 @@ export default async function SolutionPage({
 
   if (!page) notFound();
 
-  const isPurchaseOrderPage = slug === "purchase-order-pdf-to-excel";
-  const displayTitle = isPurchaseOrderPage
-    ? "Purchase Order PDF to Excel"
-    : page.h1;
-  const displaySubtitle = isPurchaseOrderPage
-    ? "Extract PO fields and line items into review-ready Excel / CSV."
-    : page.intro;
+  const visual = getVisualConfig(page, slug);
 
   return (
     <main className="page-shell article-shell">
@@ -165,17 +298,17 @@ export default async function SolutionPage({
 
       <article>
         <div className="eyebrow">TimeEase Solution</div>
-        <h1 className="solution-hero-title">{displayTitle}</h1>
-        <p className="article-intro solution-hero-subtitle">{displaySubtitle}</p>
+        <h1 className="solution-hero-title">{visual.shortTitle}</h1>
+        <p className="article-intro solution-hero-subtitle">{visual.subtitle}</p>
 
-        <HeroGraphic />
+        <HeroGraphic config={visual} />
 
         <div className="article-section">
           <h2>The problem</h2>
           <p>{page.problem_section}</p>
         </div>
 
-        <ComparisonGraphic />
+        <ComparisonGraphic config={visual} />
 
         <div className="article-section">
           <h2>Who this is for</h2>
@@ -190,7 +323,7 @@ export default async function SolutionPage({
         {Array.isArray(page.solution_steps) && page.solution_steps.length > 0 && (
           <div className="article-section">
             <h2>How it works</h2>
-            <WorkflowGraphic />
+            <WorkflowGraphic config={visual} />
             <ol>
               {page.solution_steps.map((step, index) => (
                 <li key={index}>
