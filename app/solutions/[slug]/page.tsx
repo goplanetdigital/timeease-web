@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSeoPage, type SeoPage } from "@/lib/seo-pages";
+import TrackedPayhipLink from "@/app/components/TrackedPayhipLink";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -352,14 +353,12 @@ export default async function SolutionPage({
             <div className="eyebrow">Next step</div>
             <h2>{page.soft_cta || "Start with a TimeEase product or workflow."}</h2>
           </div>
-          <a
+          <TrackedPayhipLink
             className="button primary"
-            href="https://payhip.com/TimeEase"
-            target="_blank"
-            rel="noreferrer"
-          >
-            {page.payhip_cta_label || "View Products"}
-          </a>
+            href={`https://payhip.com/TimeEase?utm_source=timeease&utm_medium=seo&utm_campaign=solution_page&utm_content=${encodeURIComponent(slug)}`}
+            slug={slug}
+            label={page.payhip_cta_label || "View Products"}
+          />
         </div>
       </article>
     </main>
