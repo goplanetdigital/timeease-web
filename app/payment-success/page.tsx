@@ -1,3 +1,5 @@
+import StatusClient from "./status-client";
+
 export default async function PaymentSuccessPage({
   searchParams,
 }: {
@@ -73,36 +75,39 @@ export default async function PaymentSuccessPage({
           >
             Job ID: <strong>{jobId}</strong>
           </div>
-        ) : null}
-
-        <div
-          style={{
-            border: "1px solid #e4e7ec",
-            borderRadius: "16px",
-            padding: "18px",
-            marginBottom: "18px",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", gap: "16px" }}>
-            <span style={{ color: "#667085" }}>Status</span>
-            <strong>Processing</strong>
+        ) : (
+          <div
+            style={{
+              background: "#fff7ed",
+              borderRadius: "14px",
+              padding: "14px 16px",
+              marginBottom: "18px",
+              fontSize: "14px",
+              color: "#9a3412",
+            }}
+          >
+            Missing job ID. Your result will still be delivered by email.
           </div>
-        </div>
+        )}
 
-        <button
-          disabled
-          style={{
-            width: "100%",
-            minHeight: "50px",
-            border: 0,
-            borderRadius: "14px",
-            background: "#eef0f3",
-            color: "#98a2b3",
-            fontWeight: 700,
-          }}
-        >
-          Download unlocks when processing is complete
-        </button>
+        {jobId ? (
+          <StatusClient jobId={jobId} />
+        ) : (
+          <button
+            disabled
+            style={{
+              width: "100%",
+              minHeight: "50px",
+              border: 0,
+              borderRadius: "14px",
+              background: "#eef0f3",
+              color: "#98a2b3",
+              fontWeight: 700,
+            }}
+          >
+            Download unavailable
+          </button>
+        )}
 
         <p
           style={{
