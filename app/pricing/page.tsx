@@ -2,6 +2,7 @@ import Link from "next/link";
 
 const plans = [
   {
+    key: "payg",
     name: "Pay as you go",
     price: "From US$39",
     suffix: "",
@@ -9,11 +10,10 @@ const plans = [
     credits: "No monthly commitment",
     taskGuide: "Pay only when you need TimeEase.",
     features: ["PDF / invoice extraction", "Excel / CSV cleanup", "Automation from US$99"],
-    cta: "Start a task",
-    href: "/upload",
     featured: false,
   },
   {
+    key: "starter",
     name: "Starter",
     price: "US$49",
     suffix: "/month",
@@ -21,11 +21,10 @@ const plans = [
     credits: "60 credits / month",
     taskGuide: "About 3 standard file tasks.",
     features: ["Standard processing", "Use credits across supported tasks", "Cancel anytime"],
-    cta: "Monthly checkout coming next",
-    href: "",
     featured: false,
   },
   {
+    key: "business",
     name: "Business",
     price: "US$99",
     suffix: "/month",
@@ -33,11 +32,10 @@ const plans = [
     credits: "140 credits / month",
     taskGuide: "About 7 standard file tasks.",
     features: ["Priority processing", "Built for repeat jobs", "Better value for frequent use"],
-    cta: "Monthly checkout coming next",
-    href: "",
     featured: true,
   },
   {
+    key: "pro",
     name: "Pro",
     price: "US$299",
     suffix: "/month",
@@ -45,13 +43,18 @@ const plans = [
     credits: "450 credits / month",
     taskGuide: "For higher-volume recurring work.",
     features: ["Priority processing", "Recurring jobs", "Automation workflows"],
-    cta: "Monthly checkout coming next",
-    href: "",
     featured: false,
   },
-];
+] as const;
 
 export default function PricingPage() {
+  const monthlyReady = Boolean(
+    process.env.STRIPE_SECRET_KEY &&
+    process.env.STRIPE_PRICE_STARTER &&
+    process.env.STRIPE_PRICE_BUSINESS &&
+    process.env.STRIPE_PRICE_PRO
+  );
+
   return (
     <main className="page-shell pricing-shell">
       <Link className="back-link" href="/">← Back to TimeEase</Link>
@@ -93,13 +96,20 @@ export default function PricingPage() {
               ))}
             </ul>
 
-            {plan.href ? (
-              <Link className="button primary plan-button" href={plan.href}>
-                {plan.cta} →
+            {plan.key === "payg" ? (
+              <Link className="button primary plan-button" href="/upload">
+                Start a task →
               </Link>
+            ) : monthlyReady ? (
+              <form action="/api/subscription/checkout" method="post">
+                <input type="hidden" name="plan" value={plan.key} />
+                <button className="button primary plan-button" type="submit">
+                  Choose {plan.name} →
+                </button>
+              </form>
             ) : (
               <div className="button plan-button disabled-button" aria-disabled="true">
-                {plan.cta}
+                Monthly checkout is being connected
               </div>
             )}
           </article>
@@ -125,8 +135,8 @@ export default function PricingPage() {
           <div className="eyebrow">Want to try TimeEase first?</div>
           <h2>Start with one task. No subscription required.</h2>
           <p>
-            The existing one-off payment flow stays available while monthly
-            checkout is connected separately.
+            Pay-as-you-go stays available. Monthly buttons turn on automatically
+            once the Stripe recurring prices are connected.
           </p>
         </div>
         <Link className="button primary" href="/upload">
