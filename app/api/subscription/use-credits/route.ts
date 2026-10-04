@@ -58,18 +58,29 @@ export async function POST(request: NextRequest) {
     const jobId = String(body?.job_id || "").trim();
 
     if (!email || !taskType || !jobId) {
-      return NextResponse.json(
-        { error: "email, task_type and job_id are required." },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        covered_by_subscription: false,
+        reason: "invalid_request",
+        pay_as_you_go: true,
+      });
     }
 
     const cost = taskCosts[taskType];
     if (!cost) {
-      return NextResponse.json(
-        { error: "This task type does not have a fixed credit cost.", pay_as_you_go: true },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        covered_by_subscription: false,
+        reason: "no_fixed_credit_cost",
+        pay_as_you_go: true,
+      });
+    }
+
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return NextResponse.json({
+        covered_by_subscription: false,
+        reason: "subscription_not_configured",
+        pay_as_you_go: true,
+        credit_cost: cost,
+      });
     }
 
     const subscription = await findActiveSubscription(email);
@@ -134,9 +145,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("TimeEase use-credits error:", error);
-    return NextResponse.json(
-      { error: "Unable to apply subscription credits." },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      covered_by_subscription: false,
+      reason: "subscription_check_failed",
+      pay_as_you_go: true,
+    });
   }
 }
