@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import SupportForm from "./support-form";
+import "./support.css";
 
 export const metadata: Metadata = {
   title: "Help & Support",
