@@ -10,11 +10,11 @@ export default function RecoverMoneyPage() {
 
       <section className="page-header">
         <div className="eyebrow">Money Recovery</div>
-        <h1>Find out if money may be worth claiming back.</h1>
+        <h1>Describe the money issue first. Evidence can come later.</h1>
         <p className="article-intro">
-          You do not need to upload a full bank statement. Share only the evidence
-          related to the issue, such as a receipt, order confirmation, refund email,
-          screenshot, invoice, or the relevant transaction only.
+          You do not need to upload a full bank statement — and you do not need
+          to upload any document just to start. Tell TimeEase what happened first.
+          Add only the relevant evidence if it helps.
         </p>
       </section>
 
@@ -22,26 +22,27 @@ export default function RecoverMoneyPage() {
         <article className="card">
           <span className="card-kicker">Common case</span>
           <h2>Duplicate or incorrect charge</h2>
-          <p>Share the relevant transaction, receipt, invoice, or order record without exposing unrelated activity.</p>
+          <p>Start by describing the charge. Add a cropped transaction or receipt only if needed.</p>
         </article>
         <article className="card">
           <span className="card-kicker">Common case</span>
           <h2>Refund not received</h2>
-          <p>Use the refund confirmation, merchant email, order record, or a screenshot showing the missing refund.</p>
+          <p>Tell us the amount, merchant, refund date, and what has happened so far. Evidence is optional at the first step.</p>
         </article>
         <article className="card">
           <span className="card-kicker">Common case</span>
           <h2>Deposit or subscription issue</h2>
-          <p>Share only the cancellation, deposit, or charge evidence needed to explain the problem.</p>
+          <p>Describe the cancellation, deposit, or unexpected charge without exposing unrelated financial activity.</p>
         </article>
       </section>
 
       <section className="article-section">
         <div className="eyebrow">Privacy first</div>
-        <h2>Only send what is relevant.</h2>
+        <h2>No full statement required.</h2>
         <p>
-          You can crop screenshots, hide unrelated transactions, and remove account
-          numbers or other details that are not needed for the review.
+          If evidence is useful, send only the relevant receipt, screenshot, email,
+          invoice, order record, or single transaction. Crop or hide unrelated
+          transactions and account details.
         </p>
       </section>
 
@@ -57,11 +58,11 @@ export default function RecoverMoneyPage() {
 
       <section className="cta-panel">
         <div>
-          <div className="eyebrow">Start a review</div>
-          <h2>Share only the relevant evidence</h2>
+          <div className="eyebrow">Start privately</div>
+          <h2>Describe what happened</h2>
           <p>
-            A receipt, screenshot, email, invoice, order record, or single relevant
-            transaction is enough to start. You will review the price before payment.
+            Start with the issue and amount. Uploading a document is optional.
+            You will review the price before payment.
           </p>
         </div>
         <a
@@ -70,7 +71,7 @@ export default function RecoverMoneyPage() {
           target="_blank"
           rel="noreferrer"
         >
-          Start Money Recovery Review →
+          Describe My Money Issue →
         </a>
       </section>
     </main>
