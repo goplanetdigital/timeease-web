@@ -78,6 +78,7 @@ export default function RootLayout({
           <Link className="site-brand" href="/">TimeEase</Link>
           <nav className="site-nav" aria-label="Main navigation">
             <Link href="/pricing">Pricing</Link>
+            <Link href="/credits">My Credits</Link>
             <Link href="/support">Help & Support</Link>
           </nav>
         </header>
@@ -91,6 +92,7 @@ export default function RootLayout({
           </div>
           <nav aria-label="Footer navigation">
             <Link href="/pricing">Pricing</Link>
+            <Link href="/credits">My Credits</Link>
             <Link href="/support">Help & Support</Link>
           </nav>
         </footer>
