@@ -17,13 +17,17 @@ export default function SubscriptionSuccessPage() {
           <div className="eyebrow">Next step</div>
           <h2>Send your next task.</h2>
           <p>
-            Monthly credits will be connected to task intake as the subscription
-            credit system is enabled.
+            Your monthly credits are ready to use for supported TimeEase tasks.
           </p>
         </div>
-        <Link className="button primary" href="/upload">
-          Start a task →
-        </Link>
+        <div className="hero-actions">
+          <Link className="button primary" href="/upload">
+            Start a task →
+          </Link>
+          <Link className="button secondary" href="/credits">
+            View my credits
+          </Link>
+        </div>
       </section>
     </main>
   );
