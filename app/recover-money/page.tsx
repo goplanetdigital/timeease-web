@@ -12,8 +12,9 @@ export default function RecoverMoneyPage() {
         <div className="eyebrow">Money Recovery</div>
         <h1>Find out if money may be worth claiming back.</h1>
         <p className="article-intro">
-          Upload the evidence you already have. TimeEase can organize the issue,
-          identify the amount in dispute, and prepare a clear refund or claim request.
+          You do not need to upload a full bank statement. Share only the evidence
+          related to the issue, such as a receipt, order confirmation, refund email,
+          screenshot, invoice, or the relevant transaction only.
         </p>
       </section>
 
@@ -21,18 +22,27 @@ export default function RecoverMoneyPage() {
         <article className="card">
           <span className="card-kicker">Common case</span>
           <h2>Duplicate or incorrect charge</h2>
-          <p>Use receipts, statements, invoices, or order records to document what was charged.</p>
+          <p>Share the relevant transaction, receipt, invoice, or order record without exposing unrelated activity.</p>
         </article>
         <article className="card">
           <span className="card-kicker">Common case</span>
           <h2>Refund not received</h2>
-          <p>Organize the refund promise, payment record, dates, and follow-up evidence in one place.</p>
+          <p>Use the refund confirmation, merchant email, order record, or a screenshot showing the missing refund.</p>
         </article>
         <article className="card">
           <span className="card-kicker">Common case</span>
           <h2>Deposit or subscription issue</h2>
-          <p>Prepare a concise request when a deposit was not returned or a charge continued after cancellation.</p>
+          <p>Share only the cancellation, deposit, or charge evidence needed to explain the problem.</p>
         </article>
+      </section>
+
+      <section className="article-section">
+        <div className="eyebrow">Privacy first</div>
+        <h2>Only send what is relevant.</h2>
+        <p>
+          You can crop screenshots, hide unrelated transactions, and remove account
+          numbers or other details that are not needed for the review.
+        </p>
       </section>
 
       <section className="article-section">
@@ -48,10 +58,10 @@ export default function RecoverMoneyPage() {
       <section className="cta-panel">
         <div>
           <div className="eyebrow">Start a review</div>
-          <h2>Upload your evidence</h2>
+          <h2>Share only the relevant evidence</h2>
           <p>
-            Add receipts, statements, emails, screenshots, or order records and
-            describe what happened. You will review the price before payment.
+            A receipt, screenshot, email, invoice, order record, or single relevant
+            transaction is enough to start. You will review the price before payment.
           </p>
         </div>
         <a
