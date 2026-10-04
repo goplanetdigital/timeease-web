@@ -19,9 +19,19 @@ a { color: inherit; text-decoration: none; }
 .page-shell {
   width: min(1120px, calc(100% - 40px));
   margin: 0 auto;
-  padding: 72px 0 96px;
+  padding: 72px 0 112px;
 }
-.hero { max-width: 880px; padding: 72px 0 56px; }
+.hero {
+  max-width: 880px;
+  padding: 72px 0 56px;
+}
+.hero-split {
+  max-width: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, .75fr);
+  align-items: center;
+  gap: 64px;
+}
 .eyebrow {
   margin-bottom: 16px;
   color: var(--muted);
@@ -33,13 +43,13 @@ a { color: inherit; text-decoration: none; }
 h1, h2, p { margin-top: 0; }
 h1 {
   margin-bottom: 24px;
-  font-size: clamp(48px, 8vw, 88px);
+  font-size: clamp(48px, 7.2vw, 82px);
   line-height: .98;
   letter-spacing: -.05em;
 }
 h2 { margin-bottom: 12px; font-size: 28px; letter-spacing: -.03em; }
 p { color: var(--muted); font-size: 18px; line-height: 1.7; }
-.hero-copy { max-width: 760px; font-size: 21px; }
+.hero-copy { max-width: 680px; font-size: 21px; }
 .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 32px; }
 .button {
   display: inline-flex;
@@ -52,7 +62,72 @@ p { color: var(--muted); font-size: 18px; line-height: 1.7; }
 }
 .button.primary { background: var(--accent); color: white; }
 .button.secondary { border: 1px solid var(--line); background: var(--surface); }
+.trust-line {
+  margin-top: 22px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.before-after {
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  padding: 26px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 22px 70px rgba(16, 24, 40, 0.08);
+}
+.before-after-label {
+  margin: 4px 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.mini-file {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 18px;
+  background: #fff;
+}
+.mini-file-title {
+  margin-bottom: 14px;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 800;
+}
+.messy-file { transform: rotate(-1deg); }
+.clean-file { transform: rotate(1deg); }
+.messy-row {
+  display: block;
+  width: 100%;
+  height: 9px;
+  margin-top: 10px;
+  border-radius: 999px;
+  background: #e7eaf0;
+}
+.messy-row.short { width: 72%; }
+.messy-row.tiny { width: 48%; }
+.transform-arrow {
+  padding: 14px 0 8px;
+  color: #475467;
+  font-size: 28px;
+  text-align: center;
+}
+.sheet-row {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr .8fr;
+  border-top: 1px solid #edf0f4;
+}
+.sheet-row span {
+  min-height: 22px;
+  border-right: 1px solid #edf0f4;
+}
+.sheet-row span:last-child { border-right: 0; }
+.sheet-head { background: #f8fafc; }
+
 .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.service-grid { margin-top: 18px; }
 .card, .solution-card, .cta-panel {
   border: 1px solid var(--line);
   border-radius: 22px;
@@ -66,6 +141,13 @@ p { color: var(--muted); font-size: 18px; line-height: 1.7; }
   font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
+}
+.service-price {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: #344054;
+  font-size: 15px;
+  font-weight: 800;
 }
 .section {
   display: flex;
@@ -104,9 +186,10 @@ p { color: var(--muted); font-size: 18px; line-height: 1.7; }
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  margin-top: 56px;
-  padding: 28px;
+  margin-top: 68px;
+  padding: 30px;
 }
+.how-it-works { margin-bottom: 12px; }
 
 .embedded-form-shell {
   overflow: hidden;
@@ -123,10 +206,19 @@ p { color: var(--muted); font-size: 18px; line-height: 1.7; }
   background: white;
 }
 
+@media (max-width: 900px) {
+  .hero-split {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+  .before-after { max-width: 560px; }
+}
+
 @media (max-width: 800px) {
   .page-shell { width: min(100% - 28px, 1120px); padding-top: 36px; }
   .hero { padding-top: 40px; }
   .grid { grid-template-columns: 1fr; }
   .section, .cta-panel, .solution-card { align-items: flex-start; flex-direction: column; }
   .embedded-form { min-height: 1180px; }
+  .trust-line { line-height: 1.6; }
 }
