@@ -1,73 +1,56 @@
-import Link from "next/link";
-
 export default function HomePage() {
   return (
     <main className="page-shell">
       <section className="hero">
         <div className="eyebrow">TimeEase</div>
-        <h1>Turn business documents into usable data, faster.</h1>
+        <h1>Upload your file. Get a finished result.</h1>
         <p className="hero-copy">
-          Practical PDF-to-Excel, invoice extraction, RFQ extraction, purchase
-          order extraction, and structured document workflows for finance,
-          procurement, and operations teams.
+          Submit a document, spreadsheet, or digital task. TimeEase routes it to
+          the right AI worker, calculates the price, and delivers the completed
+          result after secure payment.
         </p>
         <div className="hero-actions">
-          <a
-            className="button primary"
-            href="https://payhip.com/TimeEase"
-            target="_blank"
-            rel="noreferrer"
-          >
-            View Products
+          <a className="button primary" href="#start">
+            Start a task
           </a>
-          <Link className="button secondary" href="/solutions">
-            Explore Solutions
-          </Link>
         </div>
       </section>
 
-      <section className="grid">
+      <section className="grid" id="start">
         <article className="card">
-          <span className="card-kicker">Finance</span>
-          <h2>Invoice & PDF extraction</h2>
-          <p>
-            Convert repetitive document data into structured spreadsheet output
-            without manual re-keying.
-          </p>
+          <span className="card-kicker">1 · Upload</span>
+          <h2>Add your file</h2>
+          <p>Send a PDF, CSV, Excel file, image, or task instructions.</p>
         </article>
-
         <article className="card">
-          <span className="card-kicker">Procurement</span>
-          <h2>RFQ & purchase order workflows</h2>
-          <p>
-            Extract line items, normalize fields, and prepare structured data for
-            quotation and review workflows.
-          </p>
+          <span className="card-kicker">2 · Pay</span>
+          <h2>Review the price</h2>
+          <p>Pricing is calculated automatically before secure checkout.</p>
         </article>
-
         <article className="card">
-          <span className="card-kicker">Operations</span>
-          <h2>Document-to-spreadsheet automation</h2>
-          <p>
-            Turn recurring business documents into cleaner, reusable Excel or
-            CSV outputs.
-          </p>
+          <span className="card-kicker">3 · Receive</span>
+          <h2>Get the result</h2>
+          <p>Your completed deliverable is sent automatically after processing.</p>
         </article>
       </section>
 
-      <section className="section">
-        <div className="section-copy">
-          <div className="eyebrow">Useful before you buy</div>
-          <h2>Solution pages built around real work problems.</h2>
+      <section className="cta-panel">
+        <div>
+          <div className="eyebrow">Ready to start?</div>
+          <h2>Send your task to TimeEase.</h2>
           <p>
-            TimeEase publishes focused guides for document-processing problems
-            that can be solved with structured extraction and spreadsheet
-            automation.
+            The production intake supports CSV and Excel cleaning, document
+            extraction, coding tasks, automation work, and AI review.
           </p>
         </div>
-        <Link className="text-link" href="/solutions">
-          Browse solution pages →
-        </Link>
+        <a
+          className="button primary"
+          href="https://206-189-36-241.sslip.io/form/67e1972a-752e-4ee4-b8fe-113a80def9ff"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Upload file →
+        </a>
       </section>
     </main>
   );
