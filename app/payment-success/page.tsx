@@ -3,10 +3,11 @@ import StatusClient from "./status-client";
 export default async function PaymentSuccessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ job_id?: string; session_id?: string }>;
+  searchParams: Promise<{ job_id?: string; session_id?: string; subscription?: string }>;
 }) {
   const params = await searchParams;
   const jobId = params.job_id || "";
+  const usedSubscriptionCredits = params.subscription === "1";
 
   return (
     <main
@@ -43,7 +44,7 @@ export default async function PaymentSuccessPage({
             marginBottom: "12px",
           }}
         >
-          Payment confirmed
+          {usedSubscriptionCredits ? "Monthly credits applied" : "Payment confirmed"}
         </div>
 
         <h1 style={{ fontSize: "34px", margin: "0 0 14px" }}>
@@ -58,8 +59,9 @@ export default async function PaymentSuccessPage({
             marginBottom: "24px",
           }}
         >
-          TimeEase has received your payment. Your worker is preparing the
-          completed result now.
+          {usedSubscriptionCredits
+            ? "Your monthly credits were applied. TimeEase is preparing the completed result now."
+            : "TimeEase has received your payment. Your task is being prepared now."}
         </p>
 
         {jobId ? (
