@@ -69,6 +69,11 @@ export default function PricingPage() {
         <div className="pricing-help">
           Not sure? Start with pay-as-you-go. You can move to a monthly plan later.
         </div>
+        <div className="hero-actions" style={{ marginTop: 18 }}>
+          <Link className="button secondary" href="/credits">
+            Check my credits →
+          </Link>
+        </div>
       </section>
 
       <section className="pricing-grid" aria-label="TimeEase plans">
