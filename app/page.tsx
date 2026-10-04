@@ -16,10 +16,13 @@ export default function HomePage() {
             <Link className="button primary" href="/upload">
               Upload a file →
             </Link>
+            <Link className="button secondary" href="/pricing">
+              View monthly plans
+            </Link>
           </div>
 
           <div className="trust-line">
-            Secure Stripe payment · No subscription · Automatic delivery
+            Secure Stripe payment · Pay per task or monthly · Automatic delivery
           </div>
         </div>
 
@@ -86,17 +89,16 @@ export default function HomePage() {
 
       <section className="cta-panel">
         <div>
-          <div className="eyebrow">For individuals · New test</div>
-          <h2>Think you were charged money you should get back?</h2>
+          <div className="eyebrow">Monthly plans</div>
+          <h2>Use TimeEase regularly? Pay monthly and use credits.</h2>
           <p>
-            TimeEase can review receipts, statements, order confirmations, and
-            support messages, organize the evidence, and prepare a clear refund
-            or claim request.
+            Keep pay-as-you-go for occasional work, or choose a monthly plan
+            for repeat document, spreadsheet, and automation tasks.
           </p>
         </div>
 
-        <Link className="button secondary" href="/recover-money">
-          Check a money issue →
+        <Link className="button secondary" href="/pricing">
+          Compare plans →
         </Link>
       </section>
 
