@@ -50,9 +50,31 @@ async function findActiveSubscription(email: string) {
   return null;
 }
 
+async function readBody(request: NextRequest) {
+  const contentType = request.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    return await request.json();
+  }
+
+  if (
+    contentType.includes("application/x-www-form-urlencoded") ||
+    contentType.includes("multipart/form-data")
+  ) {
+    const form = await request.formData();
+    return Object.fromEntries(form.entries());
+  }
+
+  try {
+    return await request.json();
+  } catch {
+    return {};
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = await readBody(request);
     const email = String(body?.email || "").trim().toLowerCase();
     const taskType = String(body?.task_type || "").trim().toUpperCase();
     const jobId = String(body?.job_id || "").trim();
