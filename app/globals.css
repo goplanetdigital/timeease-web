@@ -352,3 +352,104 @@ p { color: var(--muted); font-size: 18px; line-height: 1.7; }
   .credit-list { grid-template-columns: 1fr; }
   .pricing-help { border-radius: 14px; line-height: 1.5; }
 }
+
+
+.site-header {
+  width: min(1120px, calc(100% - 40px));
+  min-height: 72px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid var(--line);
+}
+.site-brand {
+  font-size: 18px;
+  font-weight: 850;
+  letter-spacing: -.03em;
+}
+.site-nav, .site-footer nav {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  color: #475467;
+  font-size: 14px;
+  font-weight: 700;
+}
+.site-footer {
+  width: min(1120px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 34px 0 90px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.site-footer > div {
+  display: grid;
+  gap: 4px;
+}
+.site-footer strong { color: var(--text); }
+.support-fab {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 30;
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #1f2937;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  padding: 0 17px;
+  box-shadow: 0 12px 30px rgba(16,24,40,.18);
+  font-size: 14px;
+  font-weight: 800;
+}
+.support-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.support-details {
+  margin-top: 48px;
+  padding-top: 30px;
+  border-top: 1px solid var(--line);
+}
+.support-detail-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 22px;
+}
+.support-detail-list span {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 14px 16px;
+  color: #475467;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+@media (max-width: 800px) {
+  .site-header { width: min(100% - 28px, 1120px); }
+  .site-nav { gap: 14px; }
+  .site-nav a:first-child { display: none; }
+  .site-footer {
+    width: min(100% - 28px, 1120px);
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .support-grid, .support-detail-list { grid-template-columns: 1fr; }
+  .support-fab {
+    right: 14px;
+    bottom: 14px;
+  }
+}
