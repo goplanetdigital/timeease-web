@@ -84,6 +84,22 @@ export default function HomePage() {
         </article>
       </section>
 
+      <section className="cta-panel">
+        <div>
+          <div className="eyebrow">For individuals · New test</div>
+          <h2>Think you were charged money you should get back?</h2>
+          <p>
+            TimeEase can review receipts, statements, order confirmations, and
+            support messages, organize the evidence, and prepare a clear refund
+            or claim request.
+          </p>
+        </div>
+
+        <Link className="button secondary" href="/recover-money">
+          Check a money issue →
+        </Link>
+      </section>
+
       <section className="cta-panel how-it-works">
         <div>
           <div className="eyebrow">How it works</div>
