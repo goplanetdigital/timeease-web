@@ -3,40 +3,64 @@ import Link from "next/link";
 export default function HomePage() {
   return (
     <main className="page-shell">
-      <section className="hero">
-        <div className="eyebrow">TimeEase</div>
-        <h1>Turn messy files into ready-to-use results.</h1>
-        <p className="hero-copy">
-          Upload your PDF, invoice, Excel, or CSV. TimeEase cleans, extracts,
-          and organizes the work automatically.
-        </p>
+      <section className="hero hero-split">
+        <div>
+          <div className="eyebrow">TimeEase</div>
+          <h1>Turn messy files into clean, ready-to-use results.</h1>
+          <p className="hero-copy">
+            Upload a PDF, invoice, Excel, or CSV. Get back a clean, usable result
+            without the manual work.
+          </p>
 
-        <div className="hero-actions">
-          <Link className="button primary" href="/upload">
-            Upload a file →
-          </Link>
+          <div className="hero-actions">
+            <Link className="button primary" href="/upload">
+              Upload a file →
+            </Link>
+          </div>
+
+          <div className="trust-line">
+            Secure Stripe payment · No subscription · Automatic delivery
+          </div>
         </div>
 
-        <p className="note">
-          No subscription. Pay only for the task you submit.
-        </p>
+        <div className="before-after" aria-label="File cleanup example">
+          <div className="before-after-label">Before</div>
+          <div className="mini-file messy-file">
+            <div className="mini-file-title">invoice-data.csv</div>
+            <span className="messy-row" />
+            <span className="messy-row short" />
+            <span className="messy-row" />
+            <span className="messy-row tiny" />
+          </div>
+
+          <div className="transform-arrow">→</div>
+
+          <div className="before-after-label">After</div>
+          <div className="mini-file clean-file">
+            <div className="mini-file-title">clean-result.xlsx</div>
+            <div className="sheet-row sheet-head"><span /><span /><span /></div>
+            <div className="sheet-row"><span /><span /><span /></div>
+            <div className="sheet-row"><span /><span /><span /></div>
+            <div className="sheet-row"><span /><span /><span /></div>
+          </div>
+        </div>
       </section>
 
-      <section className="grid" id="start">
+      <section className="grid service-grid" id="start">
         <article className="card">
-          <span className="card-kicker">From US$39</span>
+          <span className="service-price">From US$39</span>
           <h2>PDF / Invoice → Excel</h2>
           <p>
             Extract tables, invoice details, and structured data into a clean,
             usable spreadsheet.
           </p>
           <Link className="text-link" href="/upload">
-            Start this task →
+            Convert to Excel →
           </Link>
         </article>
 
         <article className="card">
-          <span className="card-kicker">From US$39</span>
+          <span className="service-price">From US$39</span>
           <h2>Excel / CSV Cleanup</h2>
           <p>
             Remove duplicates, fix formatting, organize columns, and clean
@@ -48,26 +72,25 @@ export default function HomePage() {
         </article>
 
         <article className="card">
-          <span className="card-kicker">From US$99</span>
+          <span className="service-price">From US$99</span>
           <h2>Task Automation</h2>
           <p>
             Turn repetitive data work into an automated workflow using APIs,
             webhooks, and connected tools.
           </p>
           <Link className="text-link" href="/upload">
-            Automate a task →
+            Automate this →
           </Link>
         </article>
       </section>
 
-      <section className="cta-panel">
+      <section className="cta-panel how-it-works">
         <div>
           <div className="eyebrow">How it works</div>
           <h2>Upload. Review the price. Get the finished result.</h2>
           <p>
             Standard jobs are processed automatically after secure payment.
-            You can track progress and download the completed result when it is
-            ready.
+            Track progress and download the completed result when it is ready.
           </p>
         </div>
 
