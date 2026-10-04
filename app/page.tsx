@@ -105,10 +105,10 @@ export default function HomePage() {
       <section className="cta-panel how-it-works">
         <div>
           <div className="eyebrow">How it works</div>
-          <h2>Upload. Review the price. Get the finished result.</h2>
+          <h2>Send it. We handle the work. You get the result.</h2>
           <p>
-            Standard jobs are processed automatically after secure payment.
-            Track progress and download the completed result when it is ready.
+            Upload your file or describe what you need, review the price before
+            payment, and download the finished result when it is ready.
           </p>
         </div>
 
