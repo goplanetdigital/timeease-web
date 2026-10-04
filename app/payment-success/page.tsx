@@ -1,4 +1,11 @@
-export default function PaymentSuccessPage() {
+export default async function PaymentSuccessPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ job_id?: string; session_id?: string }>;
+}) {
+  const params = await searchParams;
+  const jobId = params.job_id || "";
+
   return (
     <main
       style={{
@@ -6,7 +13,7 @@ export default function PaymentSuccessPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "#f7f7f5",
+        background: "#f7f8fa",
         padding: "24px",
         fontFamily: "Arial, sans-serif",
       }}
@@ -14,58 +21,100 @@ export default function PaymentSuccessPage() {
       <div
         style={{
           width: "100%",
-          maxWidth: "520px",
+          maxWidth: "560px",
           background: "#ffffff",
+          border: "1px solid #e4e7ec",
           borderRadius: "24px",
-          padding: "48px 32px",
-          textAlign: "center",
-          boxShadow: "0 12px 40px rgba(0,0,0,0.08)",
+          padding: "44px 32px",
+          boxShadow: "0 16px 50px rgba(16,24,40,0.08)",
         }}
       >
-        <div style={{ fontSize: "52px", marginBottom: "18px" }}>✓</div>
+        <div style={{ fontSize: "42px", marginBottom: "18px" }}>✓</div>
 
-        <h1 style={{ fontSize: "30px", margin: "0 0 14px" }}>
-          Payment Successful
+        <div
+          style={{
+            color: "#667085",
+            fontSize: "13px",
+            fontWeight: 700,
+            letterSpacing: ".08em",
+            textTransform: "uppercase",
+            marginBottom: "12px",
+          }}
+        >
+          Payment confirmed
+        </div>
+
+        <h1 style={{ fontSize: "34px", margin: "0 0 14px" }}>
+          Your task is processing.
         </h1>
 
         <p
           style={{
             fontSize: "17px",
-            lineHeight: 1.6,
-            color: "#555",
-            marginBottom: "12px",
+            lineHeight: 1.65,
+            color: "#667085",
+            marginBottom: "24px",
           }}
         >
-          Your document has been received and processing has started.
+          TimeEase has received your payment. Your worker is preparing the
+          completed result now.
         </p>
 
-        <p
-          style={{
-            fontSize: "15px",
-            lineHeight: 1.6,
-            color: "#777",
-            marginBottom: "28px",
-          }}
-        >
-          Your completed Excel or CSV file will be sent automatically to your
-          email when it is ready.
-        </p>
+        {jobId ? (
+          <div
+            style={{
+              background: "#f7f8fa",
+              borderRadius: "14px",
+              padding: "14px 16px",
+              marginBottom: "18px",
+              fontSize: "14px",
+              color: "#475467",
+            }}
+          >
+            Job ID: <strong>{jobId}</strong>
+          </div>
+        ) : null}
 
         <div
           style={{
-            background: "#f3f4f6",
-            borderRadius: "14px",
-            padding: "16px",
-            fontSize: "14px",
-            color: "#555",
+            border: "1px solid #e4e7ec",
+            borderRadius: "16px",
+            padding: "18px",
+            marginBottom: "18px",
           }}
         >
-          You may close this page now.
+          <div style={{ display: "flex", justifyContent: "space-between", gap: "16px" }}>
+            <span style={{ color: "#667085" }}>Status</span>
+            <strong>Processing</strong>
+          </div>
         </div>
 
-        <div style={{ marginTop: "30px", fontSize: "13px", color: "#999" }}>
-          TimeEase
-        </div>
+        <button
+          disabled
+          style={{
+            width: "100%",
+            minHeight: "50px",
+            border: 0,
+            borderRadius: "14px",
+            background: "#eef0f3",
+            color: "#98a2b3",
+            fontWeight: 700,
+          }}
+        >
+          Download unlocks when processing is complete
+        </button>
+
+        <p
+          style={{
+            margin: "18px 0 0",
+            color: "#98a2b3",
+            fontSize: "13px",
+            lineHeight: 1.5,
+            textAlign: "center",
+          }}
+        >
+          A copy of the completed result will also be sent to your email.
+        </p>
       </div>
     </main>
   );
