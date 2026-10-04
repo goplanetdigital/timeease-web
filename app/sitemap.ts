@@ -12,6 +12,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/pdf-to-excel`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.9 },
     { url: `${base}/invoice-to-excel`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.9 },
     { url: `${base}/excel-cleanup`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.9 },
+    { url: `${base}/csv-cleanup`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.9 },
+    { url: `${base}/automation`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.9 },
     { url: `${base}/solutions`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
   ];
 
