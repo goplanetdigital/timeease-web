@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function HomePage() {
   return (
     <main className="page-shell">
@@ -10,9 +12,9 @@ export default function HomePage() {
           result after secure payment.
         </p>
         <div className="hero-actions">
-          <a className="button primary" href="#start">
+          <Link className="button primary" href="/upload">
             Start a task
-          </a>
+          </Link>
         </div>
       </section>
 
@@ -43,14 +45,9 @@ export default function HomePage() {
             extraction, coding tasks, automation work, and AI review.
           </p>
         </div>
-        <a
-          className="button primary"
-          href="https://206-189-36-241.sslip.io/form/e884e33b-cb2b-40cb-84b5-fb917a4b681f"
-          target="_blank"
-          rel="noreferrer"
-        >
+        <Link className="button primary" href="/upload">
           Upload file →
-        </a>
+        </Link>
       </section>
     </main>
   );
