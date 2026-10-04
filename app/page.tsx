@@ -5,48 +5,74 @@ export default function HomePage() {
     <main className="page-shell">
       <section className="hero">
         <div className="eyebrow">TimeEase</div>
-        <h1>Upload your file. Get a finished result.</h1>
+        <h1>Turn messy files into ready-to-use results.</h1>
         <p className="hero-copy">
-          Submit a document, spreadsheet, or digital task. TimeEase routes it to
-          the right AI worker, calculates the price, and delivers the completed
-          result after secure payment.
+          Upload your PDF, invoice, Excel, or CSV. TimeEase cleans, extracts,
+          and organizes the work automatically.
         </p>
+
         <div className="hero-actions">
           <Link className="button primary" href="/upload">
-            Start a task
+            Upload a file →
           </Link>
         </div>
+
+        <p className="note">
+          No subscription. Pay only for the task you submit.
+        </p>
       </section>
 
       <section className="grid" id="start">
         <article className="card">
-          <span className="card-kicker">1 · Upload</span>
-          <h2>Add your file</h2>
-          <p>Send a PDF, CSV, Excel file, image, or task instructions.</p>
+          <span className="card-kicker">From US$39</span>
+          <h2>PDF / Invoice → Excel</h2>
+          <p>
+            Extract tables, invoice details, and structured data into a clean,
+            usable spreadsheet.
+          </p>
+          <Link className="text-link" href="/upload">
+            Start this task →
+          </Link>
         </article>
+
         <article className="card">
-          <span className="card-kicker">2 · Pay</span>
-          <h2>Review the price</h2>
-          <p>Pricing is calculated automatically before secure checkout.</p>
+          <span className="card-kicker">From US$39</span>
+          <h2>Excel / CSV Cleanup</h2>
+          <p>
+            Remove duplicates, fix formatting, organize columns, and clean
+            messy spreadsheet data.
+          </p>
+          <Link className="text-link" href="/upload">
+            Clean my file →
+          </Link>
         </article>
+
         <article className="card">
-          <span className="card-kicker">3 · Receive</span>
-          <h2>Get the result</h2>
-          <p>Your completed deliverable is sent automatically after processing.</p>
+          <span className="card-kicker">From US$99</span>
+          <h2>Task Automation</h2>
+          <p>
+            Turn repetitive data work into an automated workflow using APIs,
+            webhooks, and connected tools.
+          </p>
+          <Link className="text-link" href="/upload">
+            Automate a task →
+          </Link>
         </article>
       </section>
 
       <section className="cta-panel">
         <div>
-          <div className="eyebrow">Ready to start?</div>
-          <h2>Send your task to TimeEase.</h2>
+          <div className="eyebrow">How it works</div>
+          <h2>Upload. Review the price. Get the finished result.</h2>
           <p>
-            The production intake supports CSV and Excel cleaning, document
-            extraction, coding tasks, automation work, and AI review.
+            Standard jobs are processed automatically after secure payment.
+            You can track progress and download the completed result when it is
+            ready.
           </p>
         </div>
+
         <Link className="button primary" href="/upload">
-          Upload file →
+          Start now →
         </Link>
       </section>
     </main>
