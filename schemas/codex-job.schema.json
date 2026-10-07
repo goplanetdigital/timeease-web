@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://timeease.example/schemas/codex-job.schema.json",
+  "title": "TimeEase Codex Job",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "job_id",
+    "title",
+    "status",
+    "repository",
+    "task_type",
+    "requirements",
+    "acceptance_criteria",
+    "commercial"
+  ],
+  "properties": {
+    "job_id": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+    "status": { "const": "READY_FOR_CODEX" },
+    "repository": { "const": "goplanetdigital/timeease-web" },
+    "task_type": {
+      "type": "string",
+      "enum": ["code", "bugfix", "integration", "automation", "qa"]
+    },
+    "requirements": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "allowed_paths": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "forbidden_actions": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "commercial": {
+      "type": "object",
+      "required": ["approved", "paid"],
+      "properties": {
+        "approved": { "type": "boolean" },
+        "paid": { "type": "boolean" },
+        "currency": { "type": ["string", "null"] },
+        "amount": { "type": ["number", "null"], "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "deadline": { "type": ["string", "null"] }
+  }
+}
