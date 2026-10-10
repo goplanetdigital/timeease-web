@@ -1,7 +1,8 @@
 import Link from "next/link";
 
-const intakeUrl =
-  "https://206-189-36-241.sslip.io/form/ecb81a49-c630-4c1d-a644-955b53e569bc";
+const shopUrl =
+  process.env.NEXT_PUBLIC_SHOP_URL ||
+  "https://bvzw62-1t.myshopify.com";
 
 export default function UploadPage() {
   return (
@@ -10,52 +11,48 @@ export default function UploadPage() {
 
       <section className="page-header">
         <div className="eyebrow">Start a task</div>
-        <h1>Upload your file.</h1>
+        <h1>Pay once. Upload securely. Get the finished file by email.</h1>
         <p className="hero-copy">
-          Tell us what you need, upload your file, review the price, and continue
-          to secure checkout.
+          Choose your TimeEase service in secure checkout. After payment,
+          your order gets a private upload link automatically—no need to re-enter
+          your email or order number.
         </p>
       </section>
 
       <section className="cta-panel">
         <div>
-          <div className="eyebrow">Secure upload</div>
-          <h2>Send your task to TimeEase</h2>
+          <div className="eyebrow">Secure checkout</div>
+          <h2>Start your TimeEase order</h2>
           <p>
-            Supports Excel and CSV cleaning, PDF or invoice extraction, coding
-            tasks, automation work, and AI review.
+            Complete payment first, then upload your PDF, invoice, spreadsheet,
+            or other supported file from your private order link.
           </p>
           <p className="note">
-            No subscription. You will see the price before payment. Payment is
-            handled securely by Stripe.
+            Your file is linked to your paid order automatically. When processing
+            is complete, the finished result is sent to your checkout email.
           </p>
         </div>
 
-        <a
-          className="button primary"
-          href={intakeUrl}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Continue to Secure Upload →
+        <a className="button primary" href={shopUrl}>
+          Continue to secure checkout →
         </a>
       </section>
 
       <section className="grid" style={{ marginTop: "24px" }}>
         <article className="card">
-          <span className="card-kicker">1 · Upload</span>
-          <h2>Add your file</h2>
-          <p>Choose the task type and add any special instructions.</p>
+          <span className="card-kicker">1 · Pay</span>
+          <h2>Complete checkout</h2>
+          <p>Choose the service you need and pay securely online.</p>
         </article>
         <article className="card">
-          <span className="card-kicker">2 · Pay</span>
-          <h2>Review the price</h2>
-          <p>Continue only after you are happy with the calculated price.</p>
+          <span className="card-kicker">2 · Upload</span>
+          <h2>Use your private upload link</h2>
+          <p>Your paid order creates a secure upload link automatically.</p>
         </article>
         <article className="card">
           <span className="card-kicker">3 · Receive</span>
-          <h2>Get the result</h2>
-          <p>Track processing and download your completed result when ready.</p>
+          <h2>Get the completed result</h2>
+          <p>TimeEase processes the job and emails the finished file to you.</p>
         </article>
       </section>
     </main>
