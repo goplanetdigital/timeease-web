@@ -94,6 +94,9 @@ export default function RootLayout({
             <Link href="/pricing">Pricing</Link>
             <Link href="/credits">My Credits</Link>
             <Link href="/support">Help & Support</Link>
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
+            <Link href="/refunds">Refunds</Link>
           </nav>
         </footer>
 
