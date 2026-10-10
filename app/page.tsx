@@ -8,8 +8,7 @@ export default function HomePage() {
           <div className="eyebrow">TimeEase</div>
           <h1>Turn messy files into clean, ready-to-use results.</h1>
           <p className="hero-copy">
-            Upload a PDF, invoice, Excel, or CSV. Get back a clean, usable result
-            without the manual work.
+            Pay securely, upload your file from a private order link, and receive a clean, ready-to-use result by email.
           </p>
 
           <div className="hero-actions">
@@ -22,7 +21,7 @@ export default function HomePage() {
           </div>
 
           <div className="trust-line">
-            Secure Stripe payment · Pay per task or monthly · Automatic delivery
+            Secure payment · Private upload link · Automatic email delivery
           </div>
         </div>
 
@@ -105,10 +104,9 @@ export default function HomePage() {
       <section className="cta-panel how-it-works">
         <div>
           <div className="eyebrow">How it works</div>
-          <h2>Send it. We handle the work. You get the result.</h2>
+          <h2>Pay. Upload. We process it. You get the result.</h2>
           <p>
-            Upload your file or describe what you need, review the price before
-            payment, and download the finished result when it is ready.
+            Complete secure checkout, upload from your private order link, and receive the finished result by email when it is ready.
           </p>
         </div>
 
