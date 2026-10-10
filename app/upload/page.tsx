@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PlanSelector from "./PlanSelector";
 
 const shopUrl =
   process.env.NEXT_PUBLIC_SHOP_URL ||
@@ -18,6 +19,8 @@ export default function UploadPage() {
           your email or order number.
         </p>
       </section>
+
+      <PlanSelector />
 
       <section className="cta-panel">
         <div>
