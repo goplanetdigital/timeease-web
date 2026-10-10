@@ -50,54 +50,50 @@ export default function HomePage() {
 
       <section className="grid service-grid" id="start">
         <article className="card">
-          <span className="service-price">From US$39</span>
-          <h2>PDF / Invoice → Excel</h2>
+          <span className="service-price">US$9</span>
+          <h2>Basic File → Excel</h2>
           <p>
-            Extract tables, invoice details, and structured data into a clean,
-            usable spreadsheet.
+            Process one simple PDF or invoice into a clean, usable spreadsheet.
           </p>
           <Link className="text-link" href="/upload">
-            Convert to Excel →
+            Start Basic →
           </Link>
         </article>
 
         <article className="card">
-          <span className="service-price">From US$39</span>
-          <h2>Excel / CSV Cleanup</h2>
+          <span className="service-price">US$39</span>
+          <h2>Complex File Processing</h2>
           <p>
-            Remove duplicates, fix formatting, organize columns, and clean
-            messy spreadsheet data.
+            Handle multi-page, multi-table, or more complex documents with extra review.
           </p>
           <Link className="text-link" href="/upload">
-            Clean my file →
+            Choose Complex →
           </Link>
         </article>
 
         <article className="card">
-          <span className="service-price">From US$99</span>
-          <h2>Task Automation</h2>
+          <span className="service-price">US$99</span>
+          <h2>Batch File Processing</h2>
           <p>
-            Turn repetitive data work into an automated workflow using APIs,
-            webhooks, and connected tools.
+            Process multiple related files and return consistent structured outputs.
           </p>
           <Link className="text-link" href="/upload">
-            Automate this →
+            Choose Batch →
           </Link>
         </article>
       </section>
 
       <section className="cta-panel">
         <div>
-          <div className="eyebrow">Monthly plans</div>
-          <h2>Use TimeEase regularly? Pay monthly and use credits.</h2>
+          <div className="eyebrow">Simple pricing</div>
+          <h2>Three clear levels: Basic, Complex, and Batch.</h2>
           <p>
-            Keep pay-as-you-go for occasional work, or choose a monthly plan
-            for repeat document, spreadsheet, and automation tasks.
+            Start at US$9 for a simple file, US$39 for complex work, or US$99 for batch processing.
           </p>
         </div>
 
         <Link className="button secondary" href="/pricing">
-          Compare plans →
+          View pricing →
         </Link>
       </section>
 
