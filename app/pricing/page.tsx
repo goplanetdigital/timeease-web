@@ -12,6 +12,7 @@ const plans = [
       "Single table or straightforward fields",
       "Excel delivery by email",
     ],
+    featured: false,
   },
   {
     name: "Complex",
@@ -37,6 +38,7 @@ const plans = [
       "Consistent structured output",
       "Best for repeat or higher-volume work",
     ],
+    featured: false,
   },
 ] as const;
 
