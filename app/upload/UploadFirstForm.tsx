@@ -12,7 +12,7 @@ export default function UploadFirstForm(){
  return <section className="plan-checker" aria-label="Upload-first order">
   <div className="eyebrow">Step 1 · Select service</div>
   <label htmlFor="service">What do you need?</label>
-  <select id="service" value={service} onChange={e=>{setService(e.target.value as TimeEaseService);setFiles([]);setError("")}}>
+  <select id="service" value={service} onChange={e=>{setService(e.target.value as TimeEaseService);setTier(e.target.value==="resume"?"resume":"basic");setFiles([]);setError("")}}>
    <option value="invoice">Invoice / PDF to Excel</option>
    <option value="consolidation">Multiple Invoices to One Excel</option>
    <option value="catalogue">Shopify Catalogue Fixer</option>
