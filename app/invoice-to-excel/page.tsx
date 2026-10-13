@@ -51,7 +51,7 @@ export default function InvoiceToExcelPage() {
         ))}
       </section>
       <section className="cta-panel">
-        <div><div className="eyebrow">From US$39</div><h2>Upload your invoice</h2><p>Review the price before payment. No monthly commitment required.</p></div>
+        <div><div className="eyebrow">From US$9</div><h2>Upload your invoice</h2><p>Review the price before payment. No monthly commitment required.</p></div>
         <Link className="button primary" href="/upload?utm_source=organic&utm_medium=seo&utm_campaign=invoice_to_excel">Convert invoice to Excel →</Link>
       </section>
     </main>
