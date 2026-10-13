@@ -5,6 +5,8 @@ on:
     paths:
       - 'db/drafts/001_paid_intake_claims.sql'
       - 'db/drafts/002_paid_intake_claims_smoke_test.sql'
+      - 'db/drafts/003_fulfillment_outbox.sql'
+      - 'db/drafts/004_fulfillment_outbox_smoke_test.sql'
       - '.github/workflows/paid-intake-claims.yml'
   workflow_dispatch:
 
@@ -40,7 +42,13 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f db/drafts/001_paid_intake_claims.sql
       - name: Verify duplicate-order rejection
         run: psql -v ON_ERROR_STOP=1 -f db/drafts/002_paid_intake_claims_smoke_test.sql
+      - name: Create outbox schema
+        run: psql -v ON_ERROR_STOP=1 -f db/drafts/003_fulfillment_outbox.sql
+      - name: Verify outbox replay protection
+        run: psql -v ON_ERROR_STOP=1 -f db/drafts/004_fulfillment_outbox_smoke_test.sql
       - name: Confirm rollback left no test claims
         run: |
           count=$(psql -tA -c "SELECT count(*) FROM timeease_paid_intake_claims")
           test "$count" = "0"
+          outbox_count=$(psql -tA -c "SELECT count(*) FROM timeease_fulfillment_outbox")
+          test "$outbox_count" = "0"
