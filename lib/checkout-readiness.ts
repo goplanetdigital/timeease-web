@@ -50,6 +50,22 @@ export function verifyStoredIntake(manifest: unknown): CheckoutSelection {
   if (!Array.isArray(m.files) || m.files.length < 1 || m.files.length > 100) {
     throw new Error("INVALID_STORED_FILES");
   }
+  // Reject duplicate paths and oversized stored payloads before payment.
+  const paths = new Set<string>();
+  let totalBytes = 0;
+  for (const file of m.files) {
+    if (!file || typeof file !== "object") throw new Error("INVALID_STORED_FILE");
+    const item = file as Record<string, unknown>;
+    if (typeof item.pathname !== "string" || paths.has(item.pathname)) {
+      throw new Error("DUPLICATE_OR_INVALID_FILE_PATH");
+    }
+    paths.add(item.pathname);
+    if (typeof item.bytes !== "number" || !Number.isSafeInteger(item.bytes) || item.bytes < 1) {
+      throw new Error("INVALID_STORED_FILE_SIZE");
+    }
+    totalBytes += item.bytes;
+  }
+  if (totalBytes > 3 * 1024 * 1024) throw new Error("STORED_FILES_TOO_LARGE");
   if (!m.quote || typeof m.quote !== "object") throw new Error("MISSING_STORED_QUOTE");
   const quote = m.quote as Record<string, unknown>;
   const service = m.service;
@@ -68,7 +84,9 @@ export function verifyStoredIntake(manifest: unknown): CheckoutSelection {
     catalogueRows: saved.catalogueRows as number | undefined,
   };
   const recomputed = calculateQuote(input);
-  if (recomputed.amountUsd !== quote.amountUsd ||
+  if (recomputed.service !== quote.service ||
+      recomputed.requiresReview !== quote.requiresReview ||
+      recomputed.amountUsd !== quote.amountUsd ||
       recomputed.variantLabel !== quote.variantLabel ||
       quote.currency !== "USD") {
     throw new Error("STORED_QUOTE_MISMATCH");
