@@ -1,0 +1,46 @@
+name: Paid intake claim SQL smoke test
+
+on:
+  pull_request:
+    paths:
+      - 'db/drafts/001_paid_intake_claims.sql'
+      - 'db/drafts/002_paid_intake_claims_smoke_test.sql'
+      - '.github/workflows/paid-intake-claims.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: timeease_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test -d timeease_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: test
+      PGPASSWORD: test
+      PGDATABASE: timeease_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create isolated test schema
+        run: psql -v ON_ERROR_STOP=1 -f db/drafts/001_paid_intake_claims.sql
+      - name: Verify duplicate-order rejection
+        run: psql -v ON_ERROR_STOP=1 -f db/drafts/002_paid_intake_claims_smoke_test.sql
+      - name: Confirm rollback left no test claims
+        run: |
+          count=$(psql -tA -c "SELECT count(*) FROM timeease_paid_intake_claims")
+          test "$count" = "0"
