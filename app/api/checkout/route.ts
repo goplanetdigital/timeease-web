@@ -22,11 +22,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "INTAKE_NOT_FOUND" }, { status: 404, headers: NO_STORE });
     }
     const manifest = JSON.parse(await new Response(blob.stream).text());
+    // Only an intact manifest can proceed to checkout preflight.
     if (manifest?.id !== id) {
       return NextResponse.json({ error: "INTAKE_ID_MISMATCH" }, { status: 409, headers: NO_STORE });
     }
+    let selection;
     try {
-      verifyStoredIntake(manifest);
+      selection = verifyStoredIntake(manifest);
+      // All stored files must belong to the same private intake namespace.
+      const expectedPrefix = `intake-v2/${id}/`;
+      if (!manifest.files.every((file: unknown) => {
+        if (!file || typeof file !== "object") return false;
+        const item = file as Record<string, unknown>;
+        return typeof item.pathname === "string" &&
+          item.pathname.startsWith(expectedPrefix) &&
+          !item.pathname.includes("..") &&
+          typeof item.bytes === "number" && item.bytes > 0;
+      })) throw new Error("INVALID_FILE_OWNERSHIP");
+      if (!selection.variantId || selection.amountUsd <= 0) throw new Error("INVALID_SELECTION");
     } catch {
       // Avoid leaking product/order details from private manifests.
       return NextResponse.json({ error: "INTAKE_NOT_READY" }, { status: 409, headers: NO_STORE });
