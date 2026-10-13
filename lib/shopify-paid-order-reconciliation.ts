@@ -82,7 +82,7 @@ export function reconcileVerifiedPaidOrder(
   if (toCents(item.price) !== expectedCents || toCents(order.total_price) !== expectedCents) {
     throw new Error("ORDER_AMOUNT_MISMATCH");
   }
-  if (!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(intakeId)) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(intakeId)) {
     throw new Error("INVALID_INTAKE_ID");
   }
   const attributes = order.note_attributes;
