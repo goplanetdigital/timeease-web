@@ -1,4 +1,4 @@
-import {type Quote} from "./upload-first-pricing";
+import {type Quote} from "./upload-first-pricing.ts";
 const VARIANTS={
  invoice:{basic:"51269543428343",complex:"51291397423351",batch:"51291397456119"},
  catalogue:{"100":"51293145759991","500":"51293145792759","2000":"51293145825527"},
