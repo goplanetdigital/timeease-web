@@ -1,6 +1,7 @@
 import {strict as assert} from "node:assert";
 import {test} from "node:test";
 import {calculateQuote} from "../lib/upload-first-pricing.ts";
+import {resolveShopifyVariant} from "../lib/shopify-variants.ts";
 
 test("consolidation: 1-10 PDFs cost $9, then $1 each additional PDF",()=>{
  for(const [count,expected] of [[1,9],[3,9],[10,9],[11,10],[100,99]]){
@@ -26,4 +27,23 @@ test("invalid or unsupported quantities cannot receive a quote",()=>{
  assert.throws(()=>calculateQuote({service:"consolidation",fileCount:101}));
  assert.throws(()=>calculateQuote({service:"catalogue",fileCount:1,catalogueRows:2001}));
  assert.throws(()=>calculateQuote({service:"invoice",fileCount:2,tier:"basic"}));
+});
+
+test("every quote resolves to an existing Shopify variant",()=>{
+ for(let count=1;count<=100;count++){
+  const quote=calculateQuote({service:"consolidation",fileCount:count});
+  assert.match(resolveShopifyVariant(quote,count),/^\\d+$/);
+ }
+ for(const tier of ["basic","complex","batch"] as const){
+  const quote=calculateQuote({service:"invoice",fileCount:1,tier});
+  assert.match(resolveShopifyVariant(quote,1),/^\\d+$/);
+ }
+ for(const rows of [1,100,101,500,501,2000]){
+  const quote=calculateQuote({service:"catalogue",fileCount:1,catalogueRows:rows});
+  assert.match(resolveShopifyVariant(quote,1),/^\\d+$/);
+ }
+ for(const tier of ["resume","full"] as const){
+  const quote=calculateQuote({service:"resume",fileCount:1,tier});
+  assert.match(resolveShopifyVariant(quote,1),/^\\d+$/);
+ }
 });
