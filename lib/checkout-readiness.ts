@@ -53,13 +53,16 @@ export function verifyStoredIntake(manifest: unknown): CheckoutSelection {
   if (!["invoice", "consolidation", "catalogue", "resume"].includes(String(service))) {
     throw new Error("INVALID_STORED_SERVICE");
   }
-  const tier = service === "catalogue" ? undefined : quote.variantLabel;
-  const catalogueRows = service === "catalogue" ? Number(String(quote.variantLabel).split(" ")[0]) : undefined;
-  const input = {
+  if (!m.quoteInput || typeof m.quoteInput !== "object") throw new Error("MISSING_QUOTE_INPUT");
+  const saved = m.quoteInput as Record<string, unknown>;
+  if (saved.service !== service || saved.fileCount !== m.files.length) {
+    throw new Error("QUOTE_INPUT_MISMATCH");
+  }
+  const input: QuoteInput = {
     service: service as QuoteInput["service"],
     fileCount: m.files.length,
-    tier: tier as QuoteInput["tier"],
-    catalogueRows,
+    tier: saved.tier as QuoteInput["tier"],
+    catalogueRows: saved.catalogueRows as number | undefined,
   };
   const recomputed = calculateQuote(input);
   if (recomputed.amountUsd !== quote.amountUsd ||
