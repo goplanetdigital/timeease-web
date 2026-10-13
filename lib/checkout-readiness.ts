@@ -5,6 +5,7 @@ import { calculateQuote, type QuoteInput } from "./upload-first-pricing";
  * by the browser. Resolve both from the persisted intake manifest instead.
  * This is a prerequisite for checkout, NOT payment verification.
  */
+// Verified against Shopify product variants on 2026-10-14.
 const variants = {
   invoice: { basic: "51269543428343", complex: "51291397423351", batch: "51291397456119" },
   catalogue: { "100 rows": "51293145759991", "500 rows": "51293145792759", "2000 rows": "51293145825527" },
@@ -34,6 +35,8 @@ export function resolveCheckoutSelection(input: QuoteInput): CheckoutSelection {
     throw new Error("CONSOLIDATION_VARIANT_LOOKUP_REQUIRED");
   }
   if (!variantId) throw new Error("NO_MATCHING_SHOPIFY_VARIANT");
+  // Shopify SKU and price must be rechecked before activating live checkout.
+  // These IDs are not evidence of a paid order.
   return { variantId, amountUsd: quote.amountUsd, service: quote.service, fileCount: input.fileCount };
 }
 
