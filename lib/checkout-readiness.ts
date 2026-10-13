@@ -36,3 +36,36 @@ export function resolveCheckoutSelection(input: QuoteInput): CheckoutSelection {
   if (!variantId) throw new Error("NO_MATCHING_SHOPIFY_VARIANT");
   return { variantId, amountUsd: quote.amountUsd, service: quote.service, fileCount: input.fileCount };
 }
+
+/** Recompute the quote from trusted manifest fields before creating checkout. */
+export function verifyStoredIntake(manifest: unknown): CheckoutSelection {
+  if (!manifest || typeof manifest !== "object") throw new Error("INVALID_INTAKE_MANIFEST");
+  const m = manifest as Record<string, unknown>;
+  if (m.status !== "AWAITING_PAYMENT" || m.checkoutOrderId !== null) {
+    throw new Error("INTAKE_NOT_AVAILABLE_FOR_CHECKOUT");
+  }
+  if (!Array.isArray(m.files) || m.files.length < 1 || m.files.length > 100) {
+    throw new Error("INVALID_STORED_FILES");
+  }
+  if (!m.quote || typeof m.quote !== "object") throw new Error("MISSING_STORED_QUOTE");
+  const quote = m.quote as Record<string, unknown>;
+  const service = m.service;
+  if (!["invoice", "consolidation", "catalogue", "resume"].includes(String(service))) {
+    throw new Error("INVALID_STORED_SERVICE");
+  }
+  const tier = service === "catalogue" ? undefined : quote.variantLabel;
+  const catalogueRows = service === "catalogue" ? Number(String(quote.variantLabel).split(" ")[0]) : undefined;
+  const input = {
+    service: service as QuoteInput["service"],
+    fileCount: m.files.length,
+    tier: tier as QuoteInput["tier"],
+    catalogueRows,
+  };
+  const recomputed = calculateQuote(input);
+  if (recomputed.amountUsd !== quote.amountUsd ||
+      recomputed.variantLabel !== quote.variantLabel ||
+      quote.currency !== "USD") {
+    throw new Error("STORED_QUOTE_MISMATCH");
+  }
+  return resolveCheckoutSelection(input);
+}
