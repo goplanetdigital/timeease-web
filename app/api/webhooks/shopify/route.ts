@@ -16,8 +16,12 @@ export async function POST(req:NextRequest){
  const secret=process.env.SHOPIFY_WEBHOOK_SECRET;
  if(!secret)return NextResponse.json({error:"WEBHOOK_NOT_CONFIGURED"},{status:503});
  const raw=await req.text();
+ if(Buffer.byteLength(raw,"utf8")>1024*1024)return NextResponse.json({error:"WEBHOOK_PAYLOAD_TOO_LARGE"},{status:413});
  if(!authenticated(raw,req.headers.get("x-shopify-hmac-sha256"),secret))
   return NextResponse.json({error:"INVALID_WEBHOOK_SIGNATURE"},{status:401});
+ const expectedShop=process.env.SHOPIFY_SHOP_DOMAIN;
+ if(expectedShop && req.headers.get("x-shopify-shop-domain")!==expectedShop)
+  return NextResponse.json({error:"UNEXPECTED_SHOP"},{status:403});
  const topic=req.headers.get("x-shopify-topic");
  if(topic!=="orders/paid")
   return NextResponse.json({error:"UNSUPPORTED_WEBHOOK_TOPIC"},{status:422});
