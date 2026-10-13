@@ -1,4 +1,4 @@
-import {put} from "@vercel/blob";
+import {put,del} from "@vercel/blob";
 import {NextRequest,NextResponse} from "next/server";
 import {calculateQuote,type TimeEaseService} from "../../../lib/upload-first-pricing";
 export const runtime="nodejs";
@@ -13,7 +13,8 @@ export async function POST(req:NextRequest){
   if(!files.length||files.length>100||files.some(f=>!(f instanceof File)))return NextResponse.json({error:"INVALID_FILE_COUNT"},{status:400});
   const docs=files as File[];
   if(docs.some(f=>!f.size||f.size>4*1024*1024||!ACCEPT[service].some(ext=>f.name.toLowerCase().endsWith(ext))))return NextResponse.json({error:"INVALID_FILE"},{status:400});
-  if(docs.reduce((n,f)=>n+f.size,0)>20*1024*1024)return NextResponse.json({error:"UPLOAD_TOO_LARGE"},{status:413});
+  // Keep under Vercel function request body limits; larger jobs require direct client uploads.
+  if(docs.reduce((n,f)=>n+f.size,0)>3*1024*1024)return NextResponse.json({error:"UPLOAD_TOO_LARGE_MAX_3MB"},{status:413});
   // Check file signatures, not only user-controlled names or MIME types.
   for(const file of docs){
    const extension=file.name.toLowerCase().split(".").pop();
@@ -28,7 +29,8 @@ export async function POST(req:NextRequest){
   const quote=calculateQuote({service,fileCount:docs.length,tier,catalogueRows});
   const id=crypto.randomUUID();
   const prefix="intake-v2/"+id+"/";
-  const stored=[];
+  const stored:{pathname:string;bytes:number;originalName:string}[]=[];
+  try{
   for(let i=0;i<docs.length;i++){
    const file=docs[i];
    const suffix=file.name.toLowerCase().split(".").pop();
@@ -37,6 +39,11 @@ export async function POST(req:NextRequest){
   }
   const manifest={id,service,quote,files:stored,status:"AWAITING_PAYMENT",createdAt:new Date().toISOString(),checkoutOrderId:null};
   await put(prefix+"manifest.json",JSON.stringify(manifest),{access:"private",addRandomSuffix:false,contentType:"application/json",token:process.env.BLOB_READ_WRITE_TOKEN});
+  }catch(uploadError){
+   // Do not retain a partial batch if the manifest or any document fails to save.
+   if(stored.length){try{await del(stored.map(f=>f.pathname),{token:process.env.BLOB_READ_WRITE_TOKEN});}catch(cleanupError){console.error("timeease_intake_cleanup_failed",cleanupError instanceof Error?cleanupError.message:"unknown");}}
+   throw uploadError;
+  }
   return NextResponse.json({id,quote,status:"AWAITING_PAYMENT",checkoutReady:false},{status:201,headers:{"Cache-Control":"no-store"}});
  }catch(e){const message=e instanceof Error?e.message:"UPLOAD_FAILED";const expected=/^(INVALID_|SELECT_|USE_|TOO_MANY_|UNSUPPORTED_)/.test(message);console.error("timeease_intake_failure",message);return NextResponse.json({error:expected?message:"UPLOAD_FAILED"},{status:expected?400:500})}
 }
