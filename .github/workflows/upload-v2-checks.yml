@@ -15,5 +15,6 @@ jobs:
         with:
           node-version: '24'
       - run: npm install --no-audit --no-fund
+      - run: node --experimental-strip-types --test tests/upload-first-pricing.test.ts
       - run: npx tsc --noEmit
       - run: npm run build
