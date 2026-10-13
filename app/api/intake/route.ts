@@ -14,6 +14,15 @@ export async function POST(req:NextRequest){
   const docs=files as File[];
   if(docs.some(f=>!f.size||f.size>4*1024*1024||!ACCEPT[service].some(ext=>f.name.toLowerCase().endsWith(ext))))return NextResponse.json({error:"INVALID_FILE"},{status:400});
   if(docs.reduce((n,f)=>n+f.size,0)>20*1024*1024)return NextResponse.json({error:"UPLOAD_TOO_LARGE"},{status:413});
+  // Check file signatures, not only user-controlled names or MIME types.
+  for(const file of docs){
+   const extension=file.name.toLowerCase().split(".").pop();
+   const bytes=new Uint8Array(await file.slice(0,8).arrayBuffer());
+   const ascii=String.fromCharCode(...bytes);
+   if(extension==="pdf"&&!ascii.startsWith("%PDF-"))return NextResponse.json({error:"INVALID_PDF_SIGNATURE"},{status:400});
+   if(extension==="xlsx"&&!(bytes[0]===0x50&&bytes[1]===0x4b))return NextResponse.json({error:"INVALID_XLSX_SIGNATURE"},{status:400});
+   if(extension==="docx"&&!(bytes[0]===0x50&&bytes[1]===0x4b))return NextResponse.json({error:"INVALID_DOCX_SIGNATURE"},{status:400});
+  }
   const tier=String(form.get("tier")||"") as "basic"|"complex"|"batch"|"resume"|"full";
   const catalogueRows=Number(form.get("catalogueRows"));
   const quote=calculateQuote({service,fileCount:docs.length,tier,catalogueRows});
