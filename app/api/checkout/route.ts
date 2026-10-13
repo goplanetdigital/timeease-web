@@ -9,6 +9,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "INVALID_REQUEST" }, { status: 400, headers: NO_STORE });
+    }
     const id = body?.id;
     if (typeof id !== "string" || !UUID.test(id)) {
       return NextResponse.json({ error: "INVALID_INTAKE_ID" }, { status: 400, headers: NO_STORE });
@@ -21,7 +24,12 @@ export async function POST(req: NextRequest) {
     if (!blob?.stream) {
       return NextResponse.json({ error: "INTAKE_NOT_FOUND" }, { status: 404, headers: NO_STORE });
     }
-    const manifest = JSON.parse(await new Response(blob.stream).text());
+    // Bound manifest size to prevent unexpectedly large JSON responses.
+    const manifestText = await new Response(blob.stream).text();
+    if (manifestText.length > 100_000) {
+      return NextResponse.json({ error: "INTAKE_NOT_READY" }, { status: 409, headers: NO_STORE });
+    }
+    const manifest = JSON.parse(manifestText);
     // Only an intact manifest can proceed to checkout preflight.
     if (manifest?.id !== id) {
       return NextResponse.json({ error: "INTAKE_ID_MISMATCH" }, { status: 409, headers: NO_STORE });
