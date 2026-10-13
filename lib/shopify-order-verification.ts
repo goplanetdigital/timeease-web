@@ -2,7 +2,6 @@
 // Never trust intake IDs, product variants or amounts supplied only by a webhook.
 export type CheckoutBinding={
  intakeId:string;
- shopDomain:string;
  variantId:string;
  amountUsd:number;
  currency:"USD";
