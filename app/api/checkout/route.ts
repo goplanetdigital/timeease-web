@@ -52,6 +52,11 @@ export async function POST(req: NextRequest) {
       // Avoid leaking product/order details from private manifests.
       return NextResponse.json({ error: "INTAKE_NOT_READY" }, { status: 409, headers: NO_STORE });
     }
+    // A successful preflight is not an authorization to charge: the paid-order
+    // worker currently interprets timeease_token as a post-payment upload token,
+    // not a pre-upload private Blob manifest identifier. Never expose the UUID
+    // as a Shopify note attribute until an authenticated reconciliation path
+    // validates the paid order, SKU, amount, currency, and single-use intake.
     // Deliberately do not redirect: checkout sessions still require signed
     // single-use binding and verified paid-order reconciliation.
     return NextResponse.json({ error: "CHECKOUT_NOT_YET_ENABLED" }, { status: 503, headers: NO_STORE });
