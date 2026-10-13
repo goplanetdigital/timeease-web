@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import PlanSelector from "./PlanSelector";
 
 const shopUrl =
@@ -20,7 +21,7 @@ export default function UploadPage() {
         </p>
       </section>
 
-      <PlanSelector />
+      <Suspense fallback={<p>Loading plans…</p>}><PlanSelector /></Suspense>
 
       <section className="cta-panel">
         <div>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { appendCampaign, readCampaign } from "../../lib/acquisition";
 
 const checkoutLinks = {
   Basic: "https://bvzw62-1t.myshopify.com/cart/51269543428343:1?checkout",
@@ -11,6 +13,8 @@ const checkoutLinks = {
 type Plan = keyof typeof checkoutLinks;
 
 export default function PlanSelector() {
+  const searchParams = useSearchParams();
+  const campaign = readCampaign(searchParams);
   const [fileCount, setFileCount] = useState<"one" | "multiple">("one");
   const [complex, setComplex] = useState<"no" | "yes">("no");
 
@@ -88,7 +92,7 @@ export default function PlanSelector() {
           <h2>{plan} · {details.price}</h2>
           <p>{details.reason}</p>
         </div>
-        <a className="button primary" href={checkoutLinks[plan]}>
+        <a className="button primary" href={appendCampaign(checkoutLinks[plan], campaign)}>
           Continue with {plan} →
         </a>
       </div>
