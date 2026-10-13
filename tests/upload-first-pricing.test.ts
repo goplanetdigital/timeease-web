@@ -1,6 +1,6 @@
 import {strict as assert} from "node:assert";
 import {test} from "node:test";
-import {calculateQuote} from "../lib/upload-first-pricing";
+import {calculateQuote} from "../lib/upload-first-pricing.ts";
 
 test("consolidation: 1-10 PDFs cost $9, then $1 each additional PDF",()=>{
  for(const [count,expected] of [[1,9],[3,9],[10,9],[11,10],[100,99]]){
