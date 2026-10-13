@@ -1,0 +1,19 @@
+name: Upload V2 checks
+on:
+  push:
+    branches: [feature/upload-first-checkout-v2]
+  pull_request:
+    branches: [main]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npx tsc --noEmit
+      - run: npm run build
