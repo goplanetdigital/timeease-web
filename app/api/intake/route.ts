@@ -1,5 +1,6 @@
 import {put,del} from "@vercel/blob";
 import {resolveShopifyVariant} from "../../../lib/shopify-variants";
+import {checkoutIsEnabled} from "../../../lib/checkout-readiness";
 import {NextRequest,NextResponse} from "next/server";
 import {calculateQuote,type TimeEaseService} from "../../../lib/upload-first-pricing";
 export const runtime="nodejs";
@@ -50,6 +51,6 @@ export async function POST(req:NextRequest){
    if(stored.length){try{await del(stored.map(f=>f.pathname),{token:process.env.BLOB_READ_WRITE_TOKEN});}catch(cleanupError){console.error("timeease_intake_cleanup_failed",cleanupError instanceof Error?cleanupError.message:"unknown");}}
    throw uploadError;
   }
-  return NextResponse.json({id,quote,status:"AWAITING_PAYMENT",checkoutReady:false},{status:201,headers:{"Cache-Control":"no-store"}});
+  return NextResponse.json({id,quote,status:"AWAITING_PAYMENT",checkoutReady:checkoutIsEnabled()},{status:201,headers:{"Cache-Control":"no-store"}});
  }catch(e){const message=e instanceof Error?e.message:"UPLOAD_FAILED";const expected=/^(INVALID_|SELECT_|USE_|TOO_MANY_|UNSUPPORTED_)/.test(message);console.error("timeease_intake_failure",message);return NextResponse.json({error:expected?message:"UPLOAD_FAILED"},{status:expected?400:500})}
 }
