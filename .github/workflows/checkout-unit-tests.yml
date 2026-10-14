@@ -28,7 +28,7 @@ jobs:
       - name: Type-check and run isolated reconciliation tests
         run: |
           mkdir -p /tmp/timeease-checkout-tests
-          npx --yes --package=typescript@5.8.3 tsc \
+          ./node_modules/.bin/tsc \
             --target es2022 --module commonjs --moduleResolution node --esModuleInterop \
             --skipLibCheck --types node --outDir /tmp/timeease-checkout-tests \
             lib/upload-first-pricing.ts lib/checkout-readiness.ts \
