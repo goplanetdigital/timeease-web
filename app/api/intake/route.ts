@@ -43,7 +43,7 @@ export async function POST(req:NextRequest){
    const blob=await put(prefix+"file-"+String(i+1).padStart(3,"0")+"."+suffix,file,{access:"private",addRandomSuffix:false,contentType:"application/octet-stream",token:process.env.BLOB_READ_WRITE_TOKEN});
    stored.push({pathname:blob.pathname,bytes:file.size,originalName:file.name});
   }
-  const manifest={id,service,quote,variantId,files:stored,status:"AWAITING_PAYMENT",createdAt:new Date().toISOString(),checkoutOrderId:null};
+  const manifest={id,service,quote,quoteInput:{service,fileCount:docs.length,tier,catalogueRows},variantId,files:stored,status:"AWAITING_PAYMENT",createdAt:new Date().toISOString(),checkoutOrderId:null};
   await put(prefix+"manifest.json",JSON.stringify(manifest),{access:"private",addRandomSuffix:false,contentType:"application/json",token:process.env.BLOB_READ_WRITE_TOKEN});
   }catch(uploadError){
    // Do not retain a partial batch if the manifest or any document fails to save.
