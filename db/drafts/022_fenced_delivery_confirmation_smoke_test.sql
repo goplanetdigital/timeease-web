@@ -19,5 +19,16 @@ BEGIN
  SELECT status INTO state FROM timeease_delivery_ledger
  WHERE intake_id='44444444-4444-4444-8444-444444444444';
  IF state <> 'SENT' THEN RAISE EXCEPTION 'Expected SENT'; END IF;
+ -- A worker with an expired lease cannot confirm, even with the right attempt.
+ UPDATE timeease_delivery_ledger SET status='SENDING',provider_message_id=NULL
+ WHERE intake_id='44444444-4444-4444-8444-444444444444';
+ UPDATE timeease_fulfillment_outbox SET lease_until=now()-interval '1 minute'
+ WHERE intake_id='44444444-4444-4444-8444-444444444444';
+ SELECT timeease_record_result_delivery('44444444-4444-4444-8444-444444444444',
+ '55555555-5555-4555-8555-555555555555',2,'expired-msg',true) INTO ok;
+ IF ok THEN RAISE EXCEPTION 'Expired lease must be rejected'; END IF;
+ SELECT status INTO state FROM timeease_delivery_ledger
+ WHERE intake_id='44444444-4444-4444-8444-444444444444';
+ IF state <> 'SENDING' THEN RAISE EXCEPTION 'Expired worker changed ledger'; END IF;
 END $$;
 ROLLBACK;
