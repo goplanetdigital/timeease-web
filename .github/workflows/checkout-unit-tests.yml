@@ -23,8 +23,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install locked dependencies
-        run: npm ci
+      # Repository does not yet contain package-lock.json; npm ci would always fail.
+      - name: Install dependencies without writing a lockfile
+        run: npm install --no-package-lock --ignore-scripts
       - name: Type-check and run isolated reconciliation tests
         run: |
           mkdir -p /tmp/timeease-checkout-tests
