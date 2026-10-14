@@ -17,6 +17,8 @@ function authenticated(raw:string,signature:string|null,secret:string):boolean {
 export async function POST(req:NextRequest){
  const secret=process.env.SHOPIFY_WEBHOOK_SECRET;
  if(!secret)return NextResponse.json({error:"WEBHOOK_NOT_CONFIGURED"},{status:503});
+ const length=req.headers.get("content-length");
+ if(length&&(!/^[0-9]+$/.test(length)||Number(length)>1048576))return NextResponse.json({error:"WEBHOOK_PAYLOAD_TOO_LARGE"},{status:413});
  const raw=await req.text();
  if(Buffer.byteLength(raw,"utf8")>1024*1024)return NextResponse.json({error:"WEBHOOK_PAYLOAD_TOO_LARGE"},{status:413});
  if(!authenticated(raw,req.headers.get("x-shopify-hmac-sha256"),secret))
