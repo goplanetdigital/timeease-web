@@ -25,7 +25,7 @@ export async function POST(req:NextRequest){
   if(!service||!["invoice","consolidation","catalogue","resume"].includes(service))
    return NextResponse.json({error:"INVALID_INTAKE_SERVICE"},{status:409});
   const totalBytes=manifest.files.reduce((sum,f)=>sum+(typeof f.bytes==="number"?f.bytes:0),0);
-  if(!Number.isSafeInteger(totalBytes)||totalBytes>3*1024*1024)
+  if(!Number.isSafeInteger(totalBytes)||totalBytes<1||totalBytes>3*1024*1024)
    return NextResponse.json({error:"INVALID_INTAKE_SIZE"},{status:409});
   const paths=new Set<string>();
   // Confirm each recorded file is under the private intake prefix.
