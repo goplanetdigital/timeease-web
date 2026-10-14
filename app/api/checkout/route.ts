@@ -25,7 +25,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "INTAKE_NOT_FOUND" }, { status: 404, headers: NO_STORE });
     }
     // Bound manifest size to prevent unexpectedly large JSON responses.
-    const manifestText = await new Response(blob.stream).text();
+    const manifestResponse = new Response(blob.stream);
+    const reader = manifestResponse.body?.getReader();
+    if (!reader) return NextResponse.json({ error: "INTAKE_NOT_READY" }, { status: 409, headers: NO_STORE });
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > 100_000) {
+        await reader.cancel();
+        return NextResponse.json({ error: "INTAKE_NOT_READY" }, { status: 409, headers: NO_STORE });
+      }
+      chunks.push(value);
+    }
+    const manifestText = Buffer.concat(chunks).toString("utf8");
     if (manifestText.length > 100_000) {
       return NextResponse.json({ error: "INTAKE_NOT_READY" }, { status: 409, headers: NO_STORE });
     }
