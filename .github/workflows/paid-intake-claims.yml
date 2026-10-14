@@ -1,6 +1,12 @@
 name: Paid intake claim SQL smoke test
 
 on:
+  push:
+    branches:
+      - fix/intake-checkout-readiness-audit
+    paths:
+      - 'db/drafts/**'
+      - '.github/workflows/paid-intake-claims.yml'
   pull_request:
     paths:
       - 'db/drafts/001_paid_intake_claims.sql'
