@@ -9,9 +9,11 @@ export default function UploadFirstForm(){
  const [error,setError]=useState("");
  const [saved,setSaved]=useState<{id:string;amount:number}|null>(null);
  const [busy,setBusy]=useState(false);
+ const [checkoutBusy,setCheckoutBusy]=useState(false);
  const quote=useMemo(()=>{try{return calculateQuote({service,fileCount:files.length,catalogueRows:rows,tier})}catch{return null}},[service,files,rows,tier]);
  function onFiles(list:FileList|null){setSaved(null);setError("");const next=Array.from(list??[]);if(next.length>100){setError("Maximum 100 files.");return;}const allowed=service==="invoice"||service==="consolidation"?[".pdf"]:service==="catalogue"?[".csv",".xlsx"]:[".pdf",".docx",".txt"];if(next.some(f=>!allowed.some(ext=>f.name.toLowerCase().endsWith(ext)))){setError("Unsupported file type for this service.");return;}if(next.reduce((sum,f)=>sum+f.size,0)>3*1024*1024){setError("Total upload size must be under 3MB. Larger files are not supported yet.");setFiles([]);return;}setFiles(next)}
  async function save(){if(!quote||busy)return;setBusy(true);setError("");setSaved(null);try{const body=new FormData();body.append("service",service);body.append("tier",tier);body.append("catalogueRows",String(rows));files.forEach(f=>body.append("files",f));const response=await fetch("/api/intake",{method:"POST",body});const result=await response.json();if(!response.ok)throw new Error(result.error||"Upload failed");setSaved({id:result.id,amount:result.quote.amountUsd})}catch(e){setError(e instanceof Error?e.message:"Upload failed")}finally{setBusy(false)}}
+ async function checkout(){if(!saved||checkoutBusy)return;setCheckoutBusy(true);setError("");try{const response=await fetch("/api/checkout",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:saved.id})});const result=await response.json();if(!response.ok)throw new Error(result.error==="CHECKOUT_NOT_YET_ENABLED"?"Secure checkout is not available yet. Your uploaded files are saved.":result.error||"Checkout unavailable");if(typeof result.checkoutUrl!=="string"||!result.checkoutUrl.startsWith("https://"))throw new Error("Invalid checkout URL");window.location.assign(result.checkoutUrl)}catch(e){setError(e instanceof Error?e.message:"Checkout unavailable")}finally{setCheckoutBusy(false)}}
  return <section className="plan-checker" aria-label="Upload-first order">
   <div className="eyebrow">Step 1 · Select service</div>
   <label htmlFor="service">What do you need?</label>
@@ -23,7 +25,7 @@ export default function UploadFirstForm(){
   <div className="plan-question"><label htmlFor="files">Step 2 · Choose files</label><input id="files" type="file" multiple={service==="consolidation"} accept={service==="invoice"||service==="consolidation"?".pdf":service==="catalogue"?".csv,.xlsx":".pdf,.docx,.txt"} onChange={e=>onFiles(e.target.files)}/><p>{files.length} file(s) selected · Maximum 3MB total for this preview</p></div>
   {error&&<p role="alert">{error}</p>}
   <div className="plan-result"><div><span className="card-kicker">Step 3 · Price</span><h2>{quote?"US$"+quote.amountUsd:"Select valid files"}</h2><p>{quote?.variantLabel||"Select files to calculate price"}</p></div><button className="button primary" type="button" disabled={!quote||busy||!!saved} onClick={save}>{busy?"Saving securely…":saved?"Upload saved":"Save files securely"}</button></div>
-  {saved&&<p role="status">Upload saved. Reference: <strong>{saved.id}</strong>. Price: US${saved.amount}. Checkout will become available after secure payment linking is verified. No second upload required.</p>}
+  {saved&&<div role="status"><p>Upload saved. Reference: <strong>{saved.id}</strong>. Price: US${saved.amount}. No second upload required.</p><button className="button primary" type="button" onClick={checkout} disabled={checkoutBusy}>{checkoutBusy?"Checking secure checkout…":"Continue to secure checkout"}</button></div>}
   <p className="note">Files are stored privately. Payment remains disabled until Shopify checkout and verified payment callbacks are connected. Uploading does not charge you.</p>
  </section>
 }
