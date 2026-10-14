@@ -23,6 +23,8 @@ on:
       - 'db/drafts/012_delivery_transitions_smoke_test.sql'
       - 'db/drafts/013_require_confirmed_delivery.sql'
       - 'db/drafts/014_confirmed_delivery_smoke_test.sql'
+      - 'db/drafts/015_fenced_delivery_start.sql'
+      - 'db/drafts/016_fenced_delivery_start_smoke_test.sql'
       - '.github/workflows/paid-intake-claims.yml'
   workflow_dispatch:
 
@@ -82,6 +84,10 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f db/drafts/013_require_confirmed_delivery.sql
       - name: Verify confirmed-delivery requirement
         run: psql -v ON_ERROR_STOP=1 -f db/drafts/014_confirmed_delivery_smoke_test.sql
+      - name: Require live worker lease for delivery
+        run: psql -v ON_ERROR_STOP=1 -f db/drafts/015_fenced_delivery_start.sql
+      - name: Verify delivery lease fencing
+        run: psql -v ON_ERROR_STOP=1 -f db/drafts/016_fenced_delivery_start_smoke_test.sql
       - name: Confirm rollback left no test claims
         run: |
           count=$(psql -tA -c "SELECT count(*) FROM timeease_paid_intake_claims")
