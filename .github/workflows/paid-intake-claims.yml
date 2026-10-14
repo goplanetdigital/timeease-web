@@ -21,6 +21,8 @@ on:
       - 'db/drafts/010_delivery_ledger_smoke_test.sql'
       - 'db/drafts/011_delivery_transitions.sql'
       - 'db/drafts/012_delivery_transitions_smoke_test.sql'
+      - 'db/drafts/013_require_confirmed_delivery.sql'
+      - 'db/drafts/014_confirmed_delivery_smoke_test.sql'
       - '.github/workflows/paid-intake-claims.yml'
   workflow_dispatch:
 
@@ -76,6 +78,10 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f db/drafts/011_delivery_transitions.sql
       - name: Verify duplicate send and ambiguous delivery safeguards
         run: psql -v ON_ERROR_STOP=1 -f db/drafts/012_delivery_transitions_smoke_test.sql
+      - name: Enforce confirmed delivery before completion
+        run: psql -v ON_ERROR_STOP=1 -f db/drafts/013_require_confirmed_delivery.sql
+      - name: Verify confirmed-delivery requirement
+        run: psql -v ON_ERROR_STOP=1 -f db/drafts/014_confirmed_delivery_smoke_test.sql
       - name: Confirm rollback left no test claims
         run: |
           count=$(psql -tA -c "SELECT count(*) FROM timeease_paid_intake_claims")
