@@ -14,6 +14,7 @@ on:
     paths:
       - 'lib/upload-first-pricing.ts'
       - 'lib/shopify-paid-order-reconciliation.ts'
+      - 'lib/shopify-webhook-auth.ts'
       - 'lib/checkout-readiness.ts'
       - 'tests/checkout-reconciliation.test.ts'
       - 'tests/shopify-webhook-auth.test.ts'
