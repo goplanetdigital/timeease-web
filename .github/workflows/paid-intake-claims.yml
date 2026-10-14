@@ -29,6 +29,8 @@ on:
       - 'db/drafts/018_quarantine_ambiguous_delivery_smoke_test.sql'
       - 'db/drafts/019_quarantine_expired_email_leases.sql'
       - 'db/drafts/020_quarantine_expired_email_leases_smoke_test.sql'
+      - 'db/drafts/021_fenced_delivery_confirmation.sql'
+      - 'db/drafts/022_fenced_delivery_confirmation_smoke_test.sql'
       - '.github/workflows/paid-intake-claims.yml'
   workflow_dispatch:
 
@@ -100,6 +102,10 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f db/drafts/019_quarantine_expired_email_leases.sql
       - name: Verify expired lease quarantine
         run: psql -v ON_ERROR_STOP=1 -f db/drafts/020_quarantine_expired_email_leases_smoke_test.sql
+      - name: Fence email confirmation
+        run: psql -v ON_ERROR_STOP=1 -f db/drafts/021_fenced_delivery_confirmation.sql
+      - name: Verify confirmation fencing
+        run: psql -v ON_ERROR_STOP=1 -f db/drafts/022_fenced_delivery_confirmation_smoke_test.sql
       - name: Confirm rollback left no test claims
         run: |
           count=$(psql -tA -c "SELECT count(*) FROM timeease_paid_intake_claims")
