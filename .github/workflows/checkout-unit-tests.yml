@@ -5,8 +5,10 @@ on:
     paths:
       - 'lib/upload-first-pricing.ts'
       - 'lib/shopify-paid-order-reconciliation.ts'
+      - 'lib/shopify-webhook-auth.ts'
       - 'lib/checkout-readiness.ts'
       - 'tests/checkout-reconciliation.test.ts'
+      - 'tests/shopify-webhook-auth.test.ts'
       - '.github/workflows/checkout-unit-tests.yml'
   pull_request:
     paths:
@@ -14,6 +16,7 @@ on:
       - 'lib/shopify-paid-order-reconciliation.ts'
       - 'lib/checkout-readiness.ts'
       - 'tests/checkout-reconciliation.test.ts'
+      - 'tests/shopify-webhook-auth.test.ts'
       - '.github/workflows/checkout-unit-tests.yml'
 jobs:
   test:
@@ -33,6 +36,6 @@ jobs:
             --target es2022 --module commonjs --moduleResolution node --esModuleInterop \
             --skipLibCheck --types node --outDir /tmp/timeease-checkout-tests \
             lib/upload-first-pricing.ts lib/checkout-readiness.ts \
-            lib/shopify-paid-order-reconciliation.ts \
-            tests/checkout-reconciliation.test.ts
-          node --test /tmp/timeease-checkout-tests/tests/checkout-reconciliation.test.js
+            lib/shopify-paid-order-reconciliation.ts lib/shopify-webhook-auth.ts \
+            tests/checkout-reconciliation.test.ts tests/shopify-webhook-auth.test.ts
+          node --test /tmp/timeease-checkout-tests/tests/*.test.js
