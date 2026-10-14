@@ -8,7 +8,7 @@ export type CheckoutTokenPayload={
 };
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function valid(p:CheckoutTokenPayload):boolean{
- return ID.test(p.intakeId)&&/^\\d+$/.test(p.variantId)&&Number.isSafeInteger(p.amountUsd)&&p.amountUsd>0&&
+ return ID.test(p.intakeId)&&/^[0-9]+$/.test(p.variantId)&&Number.isSafeInteger(p.amountUsd)&&p.amountUsd>0&&
  Number.isSafeInteger(p.expiresAt)&&p.expiresAt>0;
 }
 export function signCheckoutToken(payload:CheckoutTokenPayload,secret:string):string{
