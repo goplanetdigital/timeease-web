@@ -1,0 +1,35 @@
+name: TimeEase Checkout Unit Tests
+on:
+  push:
+    branches: [fix/intake-checkout-readiness-audit]
+    paths:
+      - 'lib/upload-first-pricing.ts'
+      - 'lib/shopify-paid-order-reconciliation.ts'
+      - 'lib/checkout-readiness.ts'
+      - 'tests/checkout-reconciliation.test.ts'
+      - '.github/workflows/checkout-unit-tests.yml'
+  pull_request:
+    paths:
+      - 'lib/upload-first-pricing.ts'
+      - 'lib/shopify-paid-order-reconciliation.ts'
+      - 'lib/checkout-readiness.ts'
+      - 'tests/checkout-reconciliation.test.ts'
+      - '.github/workflows/checkout-unit-tests.yml'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Type-check and run isolated reconciliation tests
+        run: |
+          mkdir -p /tmp/timeease-checkout-tests
+          npx --yes --package=typescript@5.8.3 tsc \
+            --target es2022 --module commonjs --moduleResolution node \
+            --skipLibCheck --outDir /tmp/timeease-checkout-tests \
+            lib/upload-first-pricing.ts lib/checkout-readiness.ts \
+            lib/shopify-paid-order-reconciliation.ts \
+            tests/checkout-reconciliation.test.ts
+          node --test /tmp/timeease-checkout-tests/tests/checkout-reconciliation.test.js
