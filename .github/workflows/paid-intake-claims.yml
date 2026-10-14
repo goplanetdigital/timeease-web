@@ -9,6 +9,8 @@ on:
       - 'db/drafts/004_fulfillment_outbox_smoke_test.sql'
       - 'db/drafts/005_worker_lease.sql'
       - 'db/drafts/006_worker_lease_smoke_test.sql'
+      - 'db/drafts/007_worker_completion.sql'
+      - 'db/drafts/008_worker_completion_smoke_test.sql'
       - '.github/workflows/paid-intake-claims.yml'
   workflow_dispatch:
 
@@ -52,6 +54,10 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f db/drafts/005_worker_lease.sql
       - name: Verify worker leasing and retry cap
         run: psql -v ON_ERROR_STOP=1 -f db/drafts/006_worker_lease_smoke_test.sql
+      - name: Create worker completion function
+        run: psql -v ON_ERROR_STOP=1 -f db/drafts/007_worker_completion.sql
+      - name: Verify completion fencing and retry
+        run: psql -v ON_ERROR_STOP=1 -f db/drafts/008_worker_completion_smoke_test.sql
       - name: Confirm rollback left no test claims
         run: |
           count=$(psql -tA -c "SELECT count(*) FROM timeease_paid_intake_claims")
