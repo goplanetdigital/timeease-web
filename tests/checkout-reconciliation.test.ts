@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { calculateQuote } from "../lib/upload-first-pricing";
 import { reconcileVerifiedPaidOrder } from "../lib/shopify-paid-order-reconciliation";
-import type { CheckoutSelection } from "../lib/checkout-readiness";
+import { resolveCheckoutSelection, verifyStoredIntake, type CheckoutSelection } from "../lib/checkout-readiness";
 
 const intakeId = "12345678-1234-4123-8123-123456789abc";
 const selection: CheckoutSelection = { service: "invoice", fileCount: 1, variantId: "51269543428343", amountUsd: 9 };
@@ -39,4 +39,24 @@ test("paid order matches only the trusted intake and exact variant", () => {
   assert.throws(() => reconcileVerifiedPaidOrder(paidOrder({ line_items: [
     { id: "999", variant_id: selection.variantId, sku: "TIMEEASE-BASIC", quantity: 2, price: "9.00" },
   ] }), selection, intakeId));
+});
+
+test("checkout selection uses exact server-controlled variant IDs", () => {
+  assert.equal(resolveCheckoutSelection({ service: "invoice", fileCount: 1, tier: "basic" }).variantId, "51269543428343");
+  assert.equal(resolveCheckoutSelection({ service: "catalogue", fileCount: 1, catalogueRows: 501 }).variantId, "51293145825527");
+  assert.equal(resolveCheckoutSelection({ service: "resume", fileCount: 1, tier: "full" }).variantId, "51293146120439");
+  assert.throws(() => resolveCheckoutSelection({ service: "consolidation", fileCount: 11 }), /CONSOLIDATION_VARIANT_LOOKUP_REQUIRED/);
+});
+test("stored intake quote and files cannot be silently changed before checkout", () => {
+  const input = { service: "invoice" as const, fileCount: 1, tier: "basic" as const };
+  const manifest = {
+    status: "AWAITING_PAYMENT", checkoutOrderId: null, service: "invoice",
+    quoteInput: input, quote: calculateQuote(input),
+    files: [{ pathname: "intake-v2/123/file-001.pdf", bytes: 200 }],
+  };
+  assert.equal(verifyStoredIntake(manifest).amountUsd, 9);
+  assert.throws(() => verifyStoredIntake({ ...manifest, quote: { ...manifest.quote, amountUsd: 1 } }));
+  assert.throws(() => verifyStoredIntake({ ...manifest, status: "PAID" }));
+  assert.throws(() => verifyStoredIntake({ ...manifest, files: [...manifest.files, ...manifest.files] }));
+  assert.throws(() => verifyStoredIntake({ ...manifest, files: [{ ...manifest.files[0], bytes: 0 }] }));
 });
