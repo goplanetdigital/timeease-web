@@ -24,9 +24,18 @@ export async function POST(req:NextRequest){
   const service=manifest.service;
   if(!service||!["invoice","consolidation","catalogue","resume"].includes(service))
    return NextResponse.json({error:"INVALID_INTAKE_SERVICE"},{status:409});
+  const totalBytes=manifest.files.reduce((sum,f)=>sum+(typeof f.bytes==="number"?f.bytes:0),0);
+  if(!Number.isSafeInteger(totalBytes)||totalBytes>3*1024*1024)
+   return NextResponse.json({error:"INVALID_INTAKE_SIZE"},{status:409});
+  const paths=new Set<string>();
   // Confirm each recorded file is under the private intake prefix.
   if(manifest.files.some(f=>typeof f.pathname!=="string"||!f.pathname.startsWith("intake-v2/"+id+"/file-")||!Number.isSafeInteger(f.bytes)||!f.bytes||f.bytes<1))
    return NextResponse.json({error:"INVALID_INTAKE_FILES"},{status:409});
+  for(const file of manifest.files){
+   if(!file.pathname||paths.has(file.pathname)||file.pathname.includes(".."))
+    return NextResponse.json({error:"DUPLICATE_OR_INVALID_FILE"},{status:409});
+   paths.add(file.pathname);
+  }
   // Variant and amount are server-stored; no browser-supplied prices accepted.
   if(!manifest.variantId||!manifest.quote||!Number.isSafeInteger(manifest.quote.amountUsd))
    return NextResponse.json({error:"INVALID_INTAKE_QUOTE"},{status:409});
