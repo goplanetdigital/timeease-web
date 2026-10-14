@@ -1,6 +1,7 @@
 import {createHmac,timingSafeEqual} from "node:crypto";
 import {NextRequest,NextResponse} from "next/server";
 import {verifyBoundShopifyOrder} from "../../../../lib/shopify-bound-order";
+import {verifyStoredIntake} from "../../../../lib/verify-stored-intake";
 
 export const runtime="nodejs";
 
@@ -37,6 +38,9 @@ export async function POST(req:NextRequest){
  if(!bindingSecret)return NextResponse.json({error:"CHECKOUT_BINDING_NOT_CONFIGURED"},{status:503});
  const binding=verifyBoundShopifyOrder(order as Parameters<typeof verifyBoundShopifyOrder>[0],bindingSecret);
  if(!binding)return NextResponse.json({error:"INVALID_ORDER_INTAKE_BINDING"},{status:422});
+ const storageToken=process.env.BLOB_READ_WRITE_TOKEN;
+ if(!storageToken)return NextResponse.json({error:"STORAGE_NOT_CONFIGURED"},{status:503});
+ if(!await verifyStoredIntake(binding,storageToken))return NextResponse.json({error:"BOUND_INTAKE_MISMATCH"},{status:422});
  // No state changes until the Shopify order ID is bound to a private intake
  // and the paid order's line items and price have been independently checked.
  return NextResponse.json({error:"PAID_ORDER_LINKING_NOT_ENABLED"},{status:503,headers:{"Cache-Control":"no-store"}});
