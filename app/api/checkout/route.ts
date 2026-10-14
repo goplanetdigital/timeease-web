@@ -3,6 +3,7 @@ import {NextRequest,NextResponse} from "next/server";
 import {calculateQuote,type QuoteInput,type TimeEaseService} from "../../../lib/upload-first-pricing";
 import {resolveShopifyVariant} from "../../../lib/shopify-variants";
 import {buildBoundCartPermalink} from "../../../lib/shopify-cart-link";
+import {checkoutIsEnabled} from "../../../lib/checkout-readiness";
 export const runtime="nodejs";
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export async function POST(req:NextRequest){
@@ -47,12 +48,10 @@ export async function POST(req:NextRequest){
   if(recomputed.amountUsd!==manifest.quote.amountUsd||variant!==manifest.variantId)
    return NextResponse.json({error:"STORED_QUOTE_MISMATCH"},{status:409});
   // Multiple independent gates prevent accepting payments before delivery is verified.
-  const enabled=process.env.TIMEEASE_V2_CHECKOUT_ENABLED==="true";
-  const deliveryVerified=process.env.TIMEEASE_V2_DELIVERY_VERIFIED==="true";
   const bindingSecret=process.env.TIMEEASE_CHECKOUT_BINDING_SECRET;
   const webhookSecret=process.env.SHOPIFY_WEBHOOK_SECRET;
   const shopDomain=process.env.SHOPIFY_SHOP_DOMAIN;
-  if(enabled&&deliveryVerified&&bindingSecret&&webhookSecret&&shopDomain){
+  if(checkoutIsEnabled()&&bindingSecret&&webhookSecret&&shopDomain){
    const checkoutUrl=buildBoundCartPermalink({
     intakeId:id,
     variantId:manifest.variantId,
