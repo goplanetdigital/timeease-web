@@ -7,6 +7,9 @@ const ACCEPT:Record<TimeEaseService,string[]>={invoice:[".pdf"],consolidation:["
 export async function POST(req:NextRequest){
  try{
   if(!process.env.BLOB_READ_WRITE_TOKEN)return NextResponse.json({error:"STORAGE_NOT_CONFIGURED"},{status:503});
+  const length=req.headers.get("content-length");
+  if(length && (!/^\\d+$/.test(length)||Number(length)>3.5*1024*1024))
+   return NextResponse.json({error:"UPLOAD_TOO_LARGE_MAX_3MB"},{status:413});
   const form=await req.formData();
   const service=String(form.get("service")||"") as TimeEaseService;
   if(!Object.hasOwn(ACCEPT,service))return NextResponse.json({error:"INVALID_SERVICE"},{status:400});
