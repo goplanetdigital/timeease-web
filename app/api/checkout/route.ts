@@ -4,6 +4,7 @@ import {calculateQuote,type QuoteInput,type TimeEaseService} from "../../../lib/
 import {resolveShopifyVariant} from "../../../lib/shopify-variants";
 import {buildBoundCartPermalink} from "../../../lib/shopify-cart-link";
 import {checkoutIsEnabled} from "../../../lib/checkout-readiness";
+import {paymentLedgerSchemaReady} from "../../../lib/payment-ledger-schema-ready";
 export const runtime="nodejs";
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export async function POST(req:NextRequest){
@@ -64,7 +65,7 @@ export async function POST(req:NextRequest){
   const bindingSecret=process.env.TIMEEASE_CHECKOUT_BINDING_SECRET;
   const webhookSecret=process.env.SHOPIFY_WEBHOOK_SECRET;
   const shopDomain=process.env.SHOPIFY_SHOP_DOMAIN;
-  if(checkoutIsEnabled()&&bindingSecret&&webhookSecret&&shopDomain){
+  if(checkoutIsEnabled()&&await paymentLedgerSchemaReady()&&bindingSecret&&webhookSecret&&shopDomain){
    const checkoutUrl=buildBoundCartPermalink({
     intakeId:id,
     variantId:manifest.variantId,
