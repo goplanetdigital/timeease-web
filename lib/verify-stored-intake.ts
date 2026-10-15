@@ -8,7 +8,22 @@ export async function verifyStoredIntake(
  const file=await get("intake-v2/"+binding.intakeId+"/manifest.json",{access:"private",token});
  if(!file?.stream)return false;
  let raw:unknown;
- try{raw=JSON.parse(await new Response(file.stream).text())}catch{return false}
+ try{
+  const reader=file.stream.getReader();
+  const chunks:Uint8Array[]=[];
+  let bytes=0;
+  while(true){
+   const chunk=await reader.read();
+   if(chunk.done)break;
+   bytes+=chunk.value.byteLength;
+   if(bytes>100000){
+    await reader.cancel();
+    return false;
+   }
+   chunks.push(chunk.value);
+  }
+  raw=JSON.parse(Buffer.concat(chunks).toString("utf8"));
+ }catch{return false}
  if(!raw||typeof raw!=="object")return false;
  const data=raw as {
   id?:unknown;variantId?:unknown;status?:unknown;checkoutOrderId?:unknown;
