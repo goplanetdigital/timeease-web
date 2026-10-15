@@ -24,11 +24,12 @@ export async function recordVerifiedPayment(
  const inserted=await db.query(sql,args);
  if(inserted.rowCount===1)return "CREATED";
  const existing=await db.query(
-  "SELECT shopify_order_id,shopify_shop_domain,variant_id,amount_usd FROM timeease_v2_orders WHERE intake_id=$1 OR shopify_order_id=$2",
+  "SELECT intake_id,shopify_order_id,shopify_shop_domain,variant_id,amount_usd,source_manifest_path FROM timeease_v2_orders WHERE intake_id=$1 OR shopify_order_id=$2",
   [binding.intakeId,orderId]);
  if(existing.rowCount!==1)throw new Error("PAYMENT_BINDING_CONFLICT");
- const row=existing.rows[0] as {shopify_order_id:string;shopify_shop_domain:string;variant_id:string;amount_usd:number};
- if(row.shopify_order_id!==orderId||row.shopify_shop_domain!==shop||
+ const row=existing.rows[0] as {intake_id:string;shopify_order_id:string;shopify_shop_domain:string;variant_id:string;amount_usd:number;source_manifest_path:string};
+ if(row.intake_id!==binding.intakeId||row.source_manifest_path!=="intake-v2/"+binding.intakeId+"/manifest.json"||
+ row.shopify_order_id!==orderId||row.shopify_shop_domain!==shop||
  row.variant_id!==binding.variantId||Number(row.amount_usd)!==binding.amountUsd)throw new Error("PAYMENT_BINDING_CONFLICT");
  return "ALREADY_RECORDED";
 }
