@@ -6,6 +6,8 @@
 export function checkoutIsEnabled(env:NodeJS.ProcessEnv=process.env):boolean{
  return env.TIMEEASE_V2_CHECKOUT_ENABLED==="true" &&
  env.TIMEEASE_V2_DELIVERY_VERIFIED==="true" &&
+ env.TIMEEASE_V2_PAYMENT_LEDGER_ENABLED==="true" &&
+ Boolean(env.TIMEEASE_DB_DATABASE_URL) &&
  Boolean(env.BLOB_READ_WRITE_TOKEN) &&
  Boolean(env.SHOPIFY_WEBHOOK_SECRET) &&
  Boolean(env.TIMEEASE_CHECKOUT_BINDING_SECRET) &&
