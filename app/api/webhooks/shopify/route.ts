@@ -2,6 +2,7 @@ import {createHmac,timingSafeEqual} from "node:crypto";
 import {NextRequest,NextResponse} from "next/server";
 import {verifyBoundShopifyOrder} from "../../../../lib/shopify-bound-order";
 import {verifyStoredIntake} from "../../../../lib/verify-stored-intake";
+import {recordVerifiedPayment} from "../../../../lib/paid-order-ledger";
 
 export const runtime="nodejs";
 
@@ -43,7 +44,18 @@ export async function POST(req:NextRequest){
  const storageToken=process.env.BLOB_READ_WRITE_TOKEN;
  if(!storageToken)return NextResponse.json({error:"STORAGE_NOT_CONFIGURED"},{status:503});
  if(!await verifyStoredIntake(binding,storageToken))return NextResponse.json({error:"BOUND_INTAKE_MISMATCH"},{status:422});
- // No state changes until the Shopify order ID is bound to a private intake
- // and the paid order's line items and price have been independently checked.
- return NextResponse.json({error:"PAID_ORDER_LINKING_NOT_ENABLED"},{status:503,headers:{"Cache-Control":"no-store"}});
+ if(process.env.TIMEEASE_V2_PAYMENT_LEDGER_ENABLED!=="true")
+  return NextResponse.json({error:"PAID_ORDER_LINKING_NOT_ENABLED"},{status:503});
+ try{
+  const shop=process.env.SHOPIFY_SHOP_DOMAIN;
+  if(!shop)return NextResponse.json({error:"SHOP_DOMAIN_NOT_CONFIGURED"},{status:503});
+  const contact=order as {email?:unknown;contact_email?:unknown};
+  const candidate=typeof contact.email==="string"?contact.email:contact.contact_email;
+  const email=typeof candidate==="string"&&candidate.length<=320?candidate:null;
+  const status=await recordVerifiedPayment(binding,String(payload.id),shop,email);
+  return NextResponse.json({status,delivery:"PENDING"},{headers:{"Cache-Control":"no-store"}});
+ }catch(error){
+  console.error("paid_order_ledger_failed",error instanceof Error?error.message:"unknown");
+  return NextResponse.json({error:"PAID_ORDER_LEDGER_UNAVAILABLE"},{status:503});
+ }
 }
