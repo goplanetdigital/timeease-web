@@ -4,6 +4,8 @@ import {checkoutIsEnabled} from "../lib/checkout-readiness.ts";
 const ready={
  TIMEEASE_V2_CHECKOUT_ENABLED:"true",
  TIMEEASE_V2_DELIVERY_VERIFIED:"true",
+ TIMEEASE_V2_PAYMENT_LEDGER_ENABLED:"true",
+ TIMEEASE_DB_DATABASE_URL:"postgresql://example",
  BLOB_READ_WRITE_TOKEN:"blob",
  SHOPIFY_WEBHOOK_SECRET:"webhook",
  TIMEEASE_CHECKOUT_BINDING_SECRET:"binding",
