@@ -17,7 +17,7 @@ export function signCheckoutToken(payload:CheckoutTokenPayload,secret:string):st
  const mac=createHmac("sha256",secret).update(body).digest("base64url");
  return body+"."+mac;
 }
-export function verifyCheckoutToken(token:string,secret:string,now=Math.floor(Date.now()/1000)):CheckoutTokenPayload|null{
+export function verifyCheckoutToken(token:string,secret:string,now=Math.floor(Date.now()/1000),graceSeconds=0):CheckoutTokenPayload|null{
  if(!secret||secret.length<32||typeof token!=="string"||token.length>2048)return null;
  const parts=token.split(".");
  if(parts.length!==2||!parts.every(x=>/^[A-Za-z0-9_-]+$/.test(x)))return null;
@@ -26,7 +26,8 @@ export function verifyCheckoutToken(token:string,secret:string,now=Math.floor(Da
  if(supplied.length!==expected.length||!timingSafeEqual(supplied,expected))return null;
  try{
   const p=JSON.parse(Buffer.from(parts[0],"base64url").toString("utf8")) as CheckoutTokenPayload;
-  if(!valid(p)||p.expiresAt<=now||p.expiresAt>now+3600)return null;
+  if(!valid(p)||!Number.isSafeInteger(graceSeconds)||graceSeconds<0||graceSeconds>604800||
+ p.expiresAt+graceSeconds<=now||p.expiresAt>now+3600)return null;
   return p;
  }catch{return null}
 }
