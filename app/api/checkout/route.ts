@@ -16,7 +16,20 @@ export async function POST(req:NextRequest){
   // Never accept quote, variant, or payment status from the browser.
   const blob=await get("intake-v2/"+id+"/manifest.json",{access:"private",token:process.env.BLOB_READ_WRITE_TOKEN});
   if(!blob||!blob.stream)return NextResponse.json({error:"INTAKE_NOT_FOUND"},{status:404});
-  const manifest=JSON.parse(await new Response(blob.stream).text()) as {
+  const reader=blob.stream.getReader();
+  const chunks:Uint8Array[]=[];
+  let size=0;
+  while(true){
+   const chunk=await reader.read();
+   if(chunk.done)break;
+   size+=chunk.value.byteLength;
+   if(size>100000){
+    await reader.cancel();
+    return NextResponse.json({error:"MANIFEST_TOO_LARGE"},{status:413});
+   }
+   chunks.push(chunk.value);
+  }
+  const manifest=JSON.parse(Buffer.concat(chunks).toString("utf8")) as {
    id?:string;service?:TimeEaseService;quote?:{amountUsd?:number};
    variantId?:string;files?:Array<{pathname?:string;bytes?:number}>;status?:string;
    quoteInput?:QuoteInput;checkoutOrderId?:unknown;
