@@ -1,4 +1,5 @@
 import {createHash,timingSafeEqual} from "node:crypto";
+import {head} from "@vercel/blob";
 import {NextRequest,NextResponse} from "next/server";
 import {markResultReady} from "../../../../lib/paid-job-claim";
 
@@ -30,6 +31,11 @@ export async function POST(req:NextRequest){
  !input.resultPath.startsWith("results-v2/"+input.intakeId+"/")||input.resultPath.includes(".."))
   return respond({error:"INVALID_RESULT"},400);
  try{
+  const token=process.env.BLOB_READ_WRITE_TOKEN;
+  if(!token)return respond({error:"STORAGE_NOT_CONFIGURED"},503);
+  const stored=await head(input.resultPath,{token});
+  if(!stored||stored.pathname!==input.resultPath||stored.size<1)
+   return respond({error:"RESULT_FILE_NOT_FOUND"},422);
   const saved=await markResultReady(input.intakeId,input.resultPath);
   return saved?respond({status:"RESULT_RECORDED",delivery:"PENDING"},200):respond({status:"NOT_RECORDABLE"},409);
  }catch{return respond({error:"WORKER_LEDGER_UNAVAILABLE"},503)}
