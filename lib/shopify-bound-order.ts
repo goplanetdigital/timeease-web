@@ -13,7 +13,7 @@ export function verifyBoundShopifyOrder(
  const matches=attrs.filter(a=>a&&a.name==="_timeease_checkout_binding"&&typeof a.value==="string");
  // Reject missing or ambiguous order bindings; never fall back to customer-supplied intake IDs.
  if(matches.length!==1)return null;
- const token=verifyCheckoutToken(matches[0].value as string,secret,now);
+ const token=verifyCheckoutToken(matches[0].value as string,secret,now,7*24*3600);
  if(!token)return null;
  const ok=verifyPaidOrder(order,{intakeId:token.intakeId,variantId:token.variantId,amountUsd:token.amountUsd,currency:"USD"});
  return ok?token:null;
