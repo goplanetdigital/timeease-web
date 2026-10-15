@@ -15,10 +15,12 @@ export type ShopifyPaidOrder={
 };
 export function verifyPaidOrder(order:ShopifyPaidOrder,binding:CheckoutBinding):boolean{
  if(!order||typeof order!=="object"||order.financial_status!=="paid"||order.currency!=="USD")return false;
- if(typeof order.id!=="number"&&typeof order.id!=="string")return false;
+ if((typeof order.id!=="number"||!Number.isSafeInteger(order.id)||order.id<=0)&&
+ (typeof order.id!=="string"||!/^[1-9][0-9]*$/.test(order.id)))return false;
  if(!Number.isSafeInteger(binding.amountUsd)||binding.amountUsd<1||!/^[0-9]+$/.test(binding.variantId))return false;
  if(typeof order.total_price!=="string"||!/^[0-9]+(?:[.][0-9]{1,2})?$/.test(order.total_price))return false;
- const cents=Math.round(Number(order.total_price)*100);
+ const [dollars,decimal=""]=order.total_price.split(".");
+ const cents=Number(dollars)*100+Number(decimal.padEnd(2,"0"));
  if(!Number.isSafeInteger(cents)||cents!==binding.amountUsd*100)return false;
  if(!Array.isArray(order.line_items)||order.line_items.length!==1)return false;
  const line=order.line_items[0] as Record<string,unknown>;
