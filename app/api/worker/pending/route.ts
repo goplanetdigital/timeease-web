@@ -18,7 +18,7 @@ export async function GET(req:NextRequest){
  if(!timingSafeEqual(supplied,expected))return respond({error:"UNAUTHORIZED"},401);
  const url=new URL(req.url);
  const limitRaw=url.searchParams.get("limit")||"10";
- if(!/^\\d{1,2}$/.test(limitRaw)||Number(limitRaw)<1||Number(limitRaw)>25)
+ if(!/^\d{1,2}$/.test(limitRaw)||Number(limitRaw)<1||Number(limitRaw)>25)
   return respond({error:"INVALID_LIMIT"},400);
  const connectionString=process.env.TIMEEASE_DB_DATABASE_URL;
  if(!connectionString)return respond({error:"DATABASE_NOT_CONFIGURED"},503);
