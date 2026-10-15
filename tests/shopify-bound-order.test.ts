@@ -19,5 +19,7 @@ test("reject missing, duplicate, expired, tampered, unpaid or mismatched orders"
   {line_items:[{variant_id:1,quantity:1}]},
   {line_items:[{variant_id:51293065117943,quantity:2}]}
  ])assert.equal(verifyBoundShopifyOrder({...order,...changed},secret,now),null);
- assert.equal(verifyBoundShopifyOrder(order,secret,now+600),null);
+ assert.deepEqual(verifyBoundShopifyOrder(order,secret,now+600),payload);
+ assert.deepEqual(verifyBoundShopifyOrder(order,secret,now+3600),payload);
+ assert.equal(verifyBoundShopifyOrder(order,secret,now+600+7*24*3600),null);
 });
