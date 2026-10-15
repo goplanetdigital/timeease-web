@@ -28,3 +28,21 @@ export async function markResultReady(intakeId:string,resultPath:string):Promise
  RETURNING intake_id`,[intakeId,resultPath]);
  return result.rowCount===1;
 }
+
+/** Finalize only after a durable result exists and the delivery provider confirms success. */
+export async function markDelivered(intakeId:string,messageId:string):Promise<boolean>{
+ if(!messageId||messageId.length>255)throw new Error("INVALID_DELIVERY_RECEIPT");
+ const result=await db().query(`UPDATE timeease_v2_orders
+ SET status='DELIVERED',delivery_message_id=$2,delivered_at=now(),last_error=NULL
+ WHERE intake_id=$1 AND status='PROCESSING' AND result_path IS NOT NULL
+ AND delivery_message_id IS NULL RETURNING intake_id`,[intakeId,messageId]);
+ return result.rowCount===1;
+}
+/** Fail closed; do not automatically resend potentially delivered messages. */
+export async function flagForReview(intakeId:string,reason:string):Promise<boolean>{
+ if(!reason||reason.length>1000)throw new Error("INVALID_REVIEW_REASON");
+ const result=await db().query(`UPDATE timeease_v2_orders
+ SET status='REVIEW_REQUIRED',last_error=$2
+ WHERE intake_id=$1 AND status='PROCESSING' RETURNING intake_id`,[intakeId,reason]);
+ return result.rowCount===1;
+}
