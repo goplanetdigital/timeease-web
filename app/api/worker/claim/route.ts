@@ -21,7 +21,7 @@ export async function POST(req:NextRequest){
   return response({error:"WORKER_NOT_CONFIGURED"},503);
  if(!authorized(req,secret))return response({error:"UNAUTHORIZED"},401);
  const length=req.headers.get("content-length");
- if(length&&(!/^\\d+$/.test(length)||Number(length)>2048))
+ if(length&&(!/^\d+$/.test(length)||Number(length)>2048))
   return response({error:"INVALID_REQUEST_SIZE"},413);
  let body:unknown;
  try{
