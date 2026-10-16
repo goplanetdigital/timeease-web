@@ -28,7 +28,7 @@ export async function POST(req:NextRequest){
  if(typeof b.intakeId!=="string"||!UUID.test(b.intakeId))return reply({error:"INVALID_INTAKE_ID"},400);
  try{
   if(b.action==="result_ready"&&typeof b.resultPath==="string"){
-   if(!/^results-v2\\/[0-9a-f-]+\\/[a-zA-Z0-9._-]+$/.test(b.resultPath)||
+   if(!/^[a-zA-Z0-9._/-]+$/.test(b.resultPath)||
       !b.resultPath.startsWith("results-v2/"+b.intakeId+"/"))return reply({error:"INVALID_RESULT_PATH"},400);
    const token=process.env.BLOB_READ_WRITE_TOKEN;
    if(!token)return reply({error:"STORAGE_NOT_CONFIGURED"},503);
