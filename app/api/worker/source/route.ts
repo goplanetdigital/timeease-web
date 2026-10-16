@@ -33,8 +33,9 @@ export async function GET(req:NextRequest){
    return respond({error:"PAID_JOB_NOT_CLAIMED"},409);
   const blob=await get(path,{access:"private",token});
   if(!blob?.stream)return respond({error:"MANIFEST_NOT_FOUND"},404);
-  const raw=await new Response(blob.stream).text();
-  if(Buffer.byteLength(raw)>100000)return respond({error:"INVALID_MANIFEST"},409);
+  const manifestBytes=Buffer.from(await new Response(blob.stream).arrayBuffer());
+  if(manifestBytes.length>100000)return respond({error:"INVALID_MANIFEST"},409);
+  const raw=manifestBytes.toString("utf8");
   const manifest=JSON.parse(raw) as {id?:string;files?:Array<{pathname?:string;bytes?:number}>};
   const file=manifest.files?.[index];
   if(manifest.id!==intakeId||!Array.isArray(manifest.files)||manifest.files.length>100||!file||
