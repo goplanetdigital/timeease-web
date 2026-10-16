@@ -44,6 +44,7 @@ export async function GET(req:NextRequest){
    return respond({error:"INVALID_SOURCE_MANIFEST"},409);
   const source=await get(file.pathname,{access:"private",token});
   if(!source?.stream)return respond({error:"SOURCE_NOT_FOUND"},404);
+  if(typeof source.size==="number"&&source.size!==file.bytes)return respond({error:"SOURCE_SIZE_MISMATCH"},409);
   const bytes=Buffer.from(await new Response(source.stream).arrayBuffer());
   if(bytes.length!==file.bytes)return respond({error:"SOURCE_SIZE_MISMATCH"},409);
   return new NextResponse(bytes,{status:200,headers:{"Content-Type":"application/octet-stream",
