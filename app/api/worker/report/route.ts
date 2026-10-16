@@ -1,6 +1,7 @@
 import {createHash,timingSafeEqual} from "node:crypto";
 import {NextRequest,NextResponse} from "next/server";
 import {markResultReady,markDelivered,flagForReview} from "../../../../lib/paid-job-claim";
+import {head} from "@vercel/blob";
 export const runtime="nodejs";
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const reply=(data:unknown,status:number)=>NextResponse.json(data,{status,headers:{"Cache-Control":"no-store"}});
@@ -27,6 +28,12 @@ export async function POST(req:NextRequest){
  if(typeof b.intakeId!=="string"||!UUID.test(b.intakeId))return reply({error:"INVALID_INTAKE_ID"},400);
  try{
   if(b.action==="result_ready"&&typeof b.resultPath==="string"){
+   if(!/^results-v2\\/[0-9a-f-]+\\/[a-zA-Z0-9._-]+$/.test(b.resultPath)||
+      !b.resultPath.startsWith("results-v2/"+b.intakeId+"/"))return reply({error:"INVALID_RESULT_PATH"},400);
+   const token=process.env.BLOB_READ_WRITE_TOKEN;
+   if(!token)return reply({error:"STORAGE_NOT_CONFIGURED"},503);
+   const blob=await head(b.resultPath,{token});
+   if(!blob||blob.size<=0)return reply({error:"RESULT_NOT_STORED"},409);
    const ok=await markResultReady(b.intakeId,b.resultPath);
    return reply({ok},ok?200:409);
   }
