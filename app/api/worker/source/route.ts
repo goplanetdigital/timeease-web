@@ -20,7 +20,8 @@ export async function GET(req:NextRequest){
  if(!timingSafeEqual(a,b))return respond({error:"UNAUTHORIZED"},401);
  const url=new URL(req.url);
  const intakeId=url.searchParams.get("intakeId")||"";
- const index=Number(url.searchParams.get("index"));
+ const indexRaw=url.searchParams.get("index");
+ const index=indexRaw===null?NaN:Number(indexRaw);
  if(!ID.test(intakeId)||!Number.isInteger(index)||index<0||index>99)
   return respond({error:"INVALID_SOURCE_REFERENCE"},400);
  try{
