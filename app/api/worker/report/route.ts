@@ -32,7 +32,9 @@ export async function POST(req:NextRequest){
       !b.resultPath.startsWith("results-v2/"+b.intakeId+"/"))return reply({error:"INVALID_RESULT_PATH"},400);
    const token=process.env.BLOB_READ_WRITE_TOKEN;
    if(!token)return reply({error:"STORAGE_NOT_CONFIGURED"},503);
-   const blob=await head(b.resultPath,{token});
+   let blob;
+   try{blob=await head(b.resultPath,{token})}
+   catch{return reply({error:"RESULT_NOT_STORED"},409)}
    if(!blob||blob.size<=0)return reply({error:"RESULT_NOT_STORED"},409);
    const ok=await markResultReady(b.intakeId,b.resultPath);
    return reply({ok},ok?200:409);
