@@ -32,6 +32,7 @@ export async function POST(req:NextRequest){
   const tier=String(form.get("tier")||"") as "basic"|"complex"|"batch"|"resume"|"full";
   const catalogueRows=Number(form.get("catalogueRows"));
   const quote=calculateQuote({service,fileCount:docs.length,tier,catalogueRows});
+  if(quote.requiresReview || (service!=="invoice" && service!=="consolidation")) return NextResponse.json({error:"SERVICE_NOT_READY"},{status:503});
   const variantId=resolveShopifyVariant(quote,docs.length);
   if(!variantId)return NextResponse.json({error:"SHOPIFY_VARIANT_NOT_CONFIGURED"},{status:503});
   const id=crypto.randomUUID();
