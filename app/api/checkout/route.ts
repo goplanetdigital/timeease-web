@@ -61,6 +61,7 @@ export async function POST(req:NextRequest){
   const variant=resolveShopifyVariant(recomputed,manifest.files.length);
   if(recomputed.amountUsd!==manifest.quote.amountUsd||variant!==manifest.variantId)
    return NextResponse.json({error:"STORED_QUOTE_MISMATCH"},{status:409});
+  if(recomputed.requiresReview || (service!=="invoice" && service!=="consolidation")) return NextResponse.json({error:"SERVICE_NOT_READY"},{status:503});
   // Multiple independent gates prevent accepting payments before delivery is verified.
   const bindingSecret=process.env.TIMEEASE_CHECKOUT_BINDING_SECRET;
   const webhookSecret=process.env.SHOPIFY_WEBHOOK_SECRET;
