@@ -61,7 +61,7 @@ export async function GET(req:NextRequest){
   if(!source?.stream)return respond({error:"SOURCE_NOT_FOUND"},404);
   const bytes=await readLimited(source.stream,file.bytes);
   if(!bytes||bytes.length!==file.bytes)return respond({error:"SOURCE_SIZE_MISMATCH"},409);
-  return new NextResponse(bytes,{status:200,headers:{"Content-Type":"application/octet-stream",
+  return new NextResponse(new Uint8Array(bytes),{status:200,headers:{"Content-Type":"application/octet-stream",
    "Cache-Control":"no-store","X-TimeEase-File-Count":String(manifest.files.length)}});
  }catch{return respond({error:"SOURCE_UNAVAILABLE"},503)}
 }
