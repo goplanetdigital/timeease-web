@@ -21,8 +21,21 @@ export async function GET(req:NextRequest){
   if(row.rowCount!==1)return NextResponse.json({error:'NOT_CLAIMED'},{status:409});
   const blob=await get(path,{access:'private',token});
   if(!blob?.stream)return NextResponse.json({error:'NOT_FOUND'},{status:404});
-  const raw=await new Response(blob.stream).text();
-  if(raw.length>100000)return NextResponse.json({error:'INVALID_MANIFEST'},{status:409});
+  // Enforce the limit while streaming; Content-Length and decoded text length are not trustworthy bounds.
+  const reader=blob.stream.getReader();
+  const chunks:Buffer[]=[];
+  let bytes=0;
+  while(true){
+   const {done,value}=await reader.read();
+   if(done)break;
+   bytes+=value.byteLength;
+   if(bytes>100000){
+    await reader.cancel();
+    return NextResponse.json({error:'INVALID_MANIFEST'},{status:409});
+   }
+   chunks.push(Buffer.from(value));
+  }
+  const raw=Buffer.concat(chunks,bytes).toString('utf8');
   const manifest=JSON.parse(raw);
   if(manifest.id!==id||!Array.isArray(manifest.files)||manifest.files.length<1||manifest.files.length>100)return NextResponse.json({error:'INVALID_MANIFEST'},{status:409});
   const files=manifest.files.map((f:{pathname?:string;bytes?:number;originalName?:string},index:number)=>{
