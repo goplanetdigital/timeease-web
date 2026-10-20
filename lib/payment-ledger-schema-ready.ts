@@ -14,7 +14,7 @@ export async function paymentLedgerSchemaReady():Promise<boolean>{
        AND column_name IN ('intake_id','shopify_order_id','shopify_shop_domain',
          'variant_id','amount_usd','customer_email','source_manifest_path',
          'result_path','delivery_message_id','processing_attempts','status',
-         'processing_started_at','delivered_at','last_error'))=14
+         'processing_started_at','delivered_at','last_error','created_at'))=15
  ) AS ready`);
   return result.rows[0]?.ready===true;
  }catch{return false}finally{await pool.end().catch(()=>{});}
