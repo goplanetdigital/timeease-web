@@ -20,8 +20,22 @@ export async function POST(req:NextRequest){
  if(!authorized(req,secret))return reply({error:"UNAUTHORIZED"},401);
  const length=req.headers.get("content-length");
  if(length&&(!/^\d+$/.test(length)||Number(length)>4096))return reply({error:"REQUEST_TOO_LARGE"},413);
+ if(!req.body)return reply({error:"INVALID_JSON"},400);
+ const reader=req.body.getReader();
+ const chunks:Buffer[]=[];
+ let size=0;
+ while(true){
+  const {done,value}=await reader.read();
+  if(done)break;
+  size+=value.byteLength;
+  if(size>4096){
+   await reader.cancel();
+   return reply({error:"REQUEST_TOO_LARGE"},413);
+  }
+  chunks.push(Buffer.from(value));
+ }
  let body:unknown;
- try{const raw=await req.text();if(Buffer.byteLength(raw)>4096)return reply({error:"REQUEST_TOO_LARGE"},413);body=JSON.parse(raw)}
+ try{body=JSON.parse(Buffer.concat(chunks,size).toString("utf8"))}
  catch{return reply({error:"INVALID_JSON"},400)}
  if(!body||typeof body!=="object")return reply({error:"INVALID_BODY"},400);
  const b=body as Record<string,unknown>;
