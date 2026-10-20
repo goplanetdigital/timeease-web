@@ -6,6 +6,20 @@ export const runtime="nodejs";
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const respond=(body:unknown,status:number)=>NextResponse.json(body,{status,headers:{"Cache-Control":"no-store"}});
 let pool:Pool|undefined;
+/** Read private blob bytes with a strict streaming cap before buffering. */
+async function readLimited(stream:ReadableStream<Uint8Array>,limit:number):Promise<Buffer|null>{
+ const reader=stream.getReader();
+ const chunks:Buffer[]=[];
+ let size=0;
+ while(true){
+  const {done,value}=await reader.read();
+  if(done)break;
+  size+=value.byteLength;
+  if(size>limit){await reader.cancel();return null;}
+  chunks.push(Buffer.from(value));
+ }
+ return Buffer.concat(chunks,size);
+}
 /** Private worker can fetch source bytes only for a paid, claimed order. */
 export async function GET(req:NextRequest){
  const secret=process.env.TIMEEASE_V2_WORKER_SECRET;
@@ -34,8 +48,8 @@ export async function GET(req:NextRequest){
    return respond({error:"PAID_JOB_NOT_CLAIMED"},409);
   const blob=await get(path,{access:"private",token});
   if(!blob?.stream)return respond({error:"MANIFEST_NOT_FOUND"},404);
-  const manifestBytes=Buffer.from(await new Response(blob.stream).arrayBuffer());
-  if(manifestBytes.length>100000)return respond({error:"INVALID_MANIFEST"},409);
+  const manifestBytes=await readLimited(blob.stream,100000);
+  if(!manifestBytes)return respond({error:"INVALID_MANIFEST"},409);
   const raw=manifestBytes.toString("utf8");
   const manifest=JSON.parse(raw) as {id?:string;files?:Array<{pathname?:string;bytes?:number}>};
   const file=manifest.files?.[index];
@@ -45,9 +59,9 @@ export async function GET(req:NextRequest){
    return respond({error:"INVALID_SOURCE_MANIFEST"},409);
   const source=await get(file.pathname,{access:"private",token});
   if(!source?.stream)return respond({error:"SOURCE_NOT_FOUND"},404);
-  const bytes=Buffer.from(await new Response(source.stream).arrayBuffer());
-  if(bytes.length!==file.bytes)return respond({error:"SOURCE_SIZE_MISMATCH"},409);
-  return new NextResponse(bytes,{status:200,headers:{"Content-Type":"application/octet-stream",
+  const bytes=await readLimited(source.stream,file.bytes);
+  if(!bytes||bytes.length!==file.bytes)return respond({error:"SOURCE_SIZE_MISMATCH"},409);
+  return new NextResponse(new Uint8Array(bytes),{status:200,headers:{"Content-Type":"application/octet-stream",
    "Cache-Control":"no-store","X-TimeEase-File-Count":String(manifest.files.length)}});
  }catch{return respond({error:"SOURCE_UNAVAILABLE"},503)}
 }
