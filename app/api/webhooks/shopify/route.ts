@@ -20,8 +20,21 @@ export async function POST(req:NextRequest){
  if(!secret)return NextResponse.json({error:"WEBHOOK_NOT_CONFIGURED"},{status:503});
  const length=req.headers.get("content-length");
  if(length&&(!/^[0-9]+$/.test(length)||Number(length)>1048576))return NextResponse.json({error:"WEBHOOK_PAYLOAD_TOO_LARGE"},{status:413});
- const raw=await req.text();
- if(Buffer.byteLength(raw,"utf8")>1024*1024)return NextResponse.json({error:"WEBHOOK_PAYLOAD_TOO_LARGE"},{status:413});
+ if(!req.body)return NextResponse.json({error:"INVALID_JSON"},{status:400});
+ const reader=req.body.getReader();
+ const chunks:Buffer[]=[];
+ let bytes=0;
+ while(true){
+  const {done,value}=await reader.read();
+  if(done)break;
+  bytes+=value.byteLength;
+  if(bytes>1024*1024){
+   await reader.cancel();
+   return NextResponse.json({error:"WEBHOOK_PAYLOAD_TOO_LARGE"},{status:413});
+  }
+  chunks.push(Buffer.from(value));
+ }
+ const raw=Buffer.concat(chunks,bytes).toString("utf8");
  if(!authenticated(raw,req.headers.get("x-shopify-hmac-sha256"),secret))
   return NextResponse.json({error:"INVALID_WEBHOOK_SIGNATURE"},{status:401});
  const expectedShop=process.env.SHOPIFY_SHOP_DOMAIN;
