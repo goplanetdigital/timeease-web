@@ -7,8 +7,25 @@ export async function verifyStoredIntake(
 ):Promise<boolean>{
  const file=await get("intake-v2/"+binding.intakeId+"/manifest.json",{access:"private",token});
  if(!file?.stream)return false;
+ // A private manifest is expected to be small. Reject oversized or malformed
+ // content while streaming instead of buffering an unbounded blob.
+ const reader=file.stream.getReader();
+ const chunks:Uint8Array[]=[];
+ let size=0;
+ try{
+  while(true){
+   const {done,value}=await reader.read();
+   if(done)break;
+   size+=value.byteLength;
+   if(size>100000){await reader.cancel();return false;}
+   chunks.push(value);
+  }
+ }catch{return false}
+ const bytes=new Uint8Array(size);
+ let offset=0;
+ for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
  let raw:unknown;
- try{raw=JSON.parse(await new Response(file.stream).text())}catch{return false}
+ try{raw=JSON.parse(new TextDecoder().decode(bytes))}catch{return false}
  if(!raw||typeof raw!=="object")return false;
  const data=raw as {
   id?:unknown;variantId?:unknown;status?:unknown;checkoutOrderId?:unknown;
