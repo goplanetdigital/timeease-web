@@ -30,6 +30,18 @@ export async function GET(req:NextRequest){
   const result=await pool.query<{status:string;count:string}>(
    "SELECT status,COUNT(*)::text AS count FROM public.timeease_v2_orders GROUP BY status"
   );
+  const stale=await pool.query<{status:string;count:string}>(`
+   SELECT status,COUNT(*)::text AS count
+   FROM public.timeease_v2_orders
+   WHERE (status='PAID' AND created_at<now()-interval '15 minutes')
+      OR (status='PROCESSING' AND processing_started_at<now()-interval '30 minutes')
+   GROUP BY status
+  `);
+  const overdue={paid:0,processing:0};
+  for(const row of stale.rows){
+   if(row.status==='PAID')overdue.paid=Number(row.count);
+   if(row.status==='PROCESSING')overdue.processing=Number(row.count);
+  }
   const counts:Record<string,number>=Object.create(null);
   for(const row of result.rows)counts[row.status]=Number(row.count);
   return reply({
@@ -37,7 +49,8 @@ export async function GET(req:NextRequest){
    ledgerEnabled:process.env.TIMEEASE_V2_PAYMENT_LEDGER_ENABLED==="true",
    checkoutEnabled:process.env.TIMEEASE_V2_CHECKOUT_ENABLED==="true",
    deliveryVerified:process.env.TIMEEASE_V2_DELIVERY_VERIFIED==="true",
-   counts
+   counts,
+   overdue
   });
  }catch{
   return reply({error:"LEDGER_QUERY_FAILED"},503);
