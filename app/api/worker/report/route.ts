@@ -42,14 +42,16 @@ export async function POST(req:NextRequest){
  if(typeof b.intakeId!=="string"||!UUID.test(b.intakeId))return reply({error:"INVALID_INTAKE_ID"},400);
  try{
   if(b.action==="result_ready"&&typeof b.resultPath==="string"){
-   if(!/^[a-zA-Z0-9._/-]+$/.test(b.resultPath)||
-      !b.resultPath.startsWith("results-v2/"+b.intakeId+"/"))return reply({error:"INVALID_RESULT_PATH"},400);
+   if(b.resultPath!=="results-v2/"+b.intakeId+"/consolidated.xlsx")
+    return reply({error:"INVALID_RESULT_PATH"},400);
    const token=process.env.BLOB_READ_WRITE_TOKEN;
    if(!token)return reply({error:"STORAGE_NOT_CONFIGURED"},503);
    let blob;
    try{blob=await head(b.resultPath,{token})}
    catch{return reply({error:"RESULT_NOT_STORED"},409)}
-   if(!blob||blob.size<=0)return reply({error:"RESULT_NOT_STORED"},409);
+   if(!blob||blob.size<=0||blob.size>20*1024*1024||
+      blob.contentType!=="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    return reply({error:"INVALID_STORED_RESULT"},409);
    const ok=await markResultReady(b.intakeId,b.resultPath);
    return reply({ok},ok?200:409);
   }
