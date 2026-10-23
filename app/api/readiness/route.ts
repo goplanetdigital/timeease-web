@@ -1,5 +1,5 @@
 import {NextResponse} from "next/server";
-import {checkoutIsEnabled} from "../../../lib/checkout-readiness";
+import {checkoutIsEnabled,checkoutTestPrerequisitesReady} from "../../../lib/checkout-readiness";
 import {paymentLedgerSchemaReady} from "../../../lib/payment-ledger-schema-ready";
 export const runtime="nodejs";
 export async function GET(){
@@ -24,6 +24,7 @@ export async function GET(){
   paymentLedgerConfigured,
   paymentLedgerEnabled,
   paymentLedgerSchemaVerified,
+  paidTestPrerequisitesReady:checkoutTestPrerequisitesReady()&&paymentLedgerSchemaVerified,
   checkoutEnabled,
   paymentWebhookVerified:false,
   workerDeliveryVerified:deliveryVerified,
