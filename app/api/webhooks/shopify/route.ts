@@ -37,6 +37,8 @@ export async function POST(req:NextRequest){
  const raw=Buffer.concat(chunks,bytes).toString("utf8");
  if(!authenticated(raw,req.headers.get("x-shopify-hmac-sha256"),secret))
   return NextResponse.json({error:"INVALID_WEBHOOK_SIGNATURE"},{status:401});
+ // Log only authenticated delivery metadata; never log payloads, signatures, or customer data.
+ console.info("shopify_webhook_signature_verified",{topic:req.headers.get("x-shopify-topic")||"missing"});
  const expectedShop=process.env.SHOPIFY_SHOP_DOMAIN;
  if(expectedShop && req.headers.get("x-shopify-shop-domain")!==expectedShop)
   return NextResponse.json({error:"UNEXPECTED_SHOP"},{status:403});
