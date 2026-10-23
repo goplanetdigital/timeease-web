@@ -1,15 +1,27 @@
 import {get} from "@vercel/blob";
+import {createHash,timingSafeEqual} from "node:crypto";
 import {NextRequest,NextResponse} from "next/server";
 import {calculateQuote,type QuoteInput,type TimeEaseService} from "../../../lib/upload-first-pricing";
 import {resolveShopifyVariant} from "../../../lib/shopify-variants";
 import {buildBoundCartPermalink} from "../../../lib/shopify-cart-link";
-import {checkoutIsEnabled} from "../../../lib/checkout-readiness";
+import {checkoutIsEnabled,checkoutTestPrerequisitesReady} from "../../../lib/checkout-readiness";
 import {paymentLedgerSchemaReady} from "../../../lib/payment-ledger-schema-ready";
 export const runtime="nodejs";
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export async function POST(req:NextRequest){
  try{
-  const {id}=await req.json();
+  const {id,testMode}=await req.json();
+  const requestedTest=testMode===true;
+  let authorizedTest=false;
+  if(requestedTest){
+   const expected=process.env.TIMEEASE_V2_WORKER_SECRET;
+   const supplied=req.headers.get("authorization");
+   if(!expected||expected.length<32||!supplied?.startsWith("Bearer "))return NextResponse.json({error:"UNAUTHORIZED"},{status:401});
+   const a=createHash("sha256").update(supplied.slice(7)).digest();
+   const b=createHash("sha256").update(expected).digest();
+   if(!timingSafeEqual(a,b))return NextResponse.json({error:"UNAUTHORIZED"},{status:401});
+   authorizedTest=true;
+  }
   if(typeof id!=="string"||!ID.test(id))
    return NextResponse.json({error:"INVALID_INTAKE_ID"},{status:400});
   if(!process.env.BLOB_READ_WRITE_TOKEN)
@@ -66,14 +78,15 @@ export async function POST(req:NextRequest){
   const bindingSecret=process.env.TIMEEASE_CHECKOUT_BINDING_SECRET;
   const webhookSecret=process.env.SHOPIFY_WEBHOOK_SECRET;
   const shopDomain=process.env.SHOPIFY_SHOP_DOMAIN;
-  if(checkoutIsEnabled()&&await paymentLedgerSchemaReady()&&bindingSecret&&webhookSecret&&shopDomain){
+  const checkoutPermitted=checkoutIsEnabled()||(authorizedTest&&checkoutTestPrerequisitesReady());
+  if(checkoutPermitted&&await paymentLedgerSchemaReady()&&bindingSecret&&webhookSecret&&shopDomain){
    const checkoutUrl=buildBoundCartPermalink({
     intakeId:id,
     variantId:manifest.variantId,
     amountUsd:recomputed.amountUsd,
     expiresAt:Math.floor(Date.now()/1000)+1800
    },bindingSecret,shopDomain);
-   return NextResponse.json({checkoutUrl,id,amountUsd:recomputed.amountUsd},{headers:{"Cache-Control":"no-store"}});
+   return NextResponse.json({checkoutUrl,id,amountUsd:recomputed.amountUsd,testMode:authorizedTest},{headers:{"Cache-Control":"no-store"}});
   }
   // Checkout stays disabled until authenticated paid-order linkage and worker delivery are ready.
   return NextResponse.json({
