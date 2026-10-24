@@ -1,0 +1,24 @@
+name: TimeEase checkout security tests
+on:
+  push:
+    branches:
+      - feature/usd1-paid-e2e-acceptance
+  pull_request:
+    paths:
+      - 'lib/checkout-binding.ts'
+      - 'lib/shopify-bound-order.ts'
+      - 'lib/shopify-order-verification.ts'
+      - 'tests/checkout-security.test.mjs'
+      - '.github/workflows/checkout-security.yml'
+jobs:
+  checkout-security:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify signed checkout and paid order safety
+        run: node --test tests/checkout-security.test.mjs
