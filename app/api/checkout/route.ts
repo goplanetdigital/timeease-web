@@ -1,4 +1,5 @@
 import {get} from "@vercel/blob";
+import {INTERNAL_E2E_USD1,assertInternalE2EPrice} from "../../../lib/internal-e2e-pricing";
 import {createHash,timingSafeEqual} from "node:crypto";
 import {NextRequest,NextResponse} from "next/server";
 import {calculateQuote,type QuoteInput,type TimeEaseService} from "../../../lib/upload-first-pricing";
@@ -69,9 +70,11 @@ export async function POST(req:NextRequest){
    return NextResponse.json({error:"INVALID_INTAKE_QUOTE"},{status:409});
   if(!manifest.quoteInput||manifest.quoteInput.service!==service||manifest.quoteInput.fileCount!==manifest.files.length)
    return NextResponse.json({error:"INVALID_QUOTE_INPUT"},{status:409});
+  const internalE2E=authorizedTest&&manifest.variantId===INTERNAL_E2E_USD1.variantId&&manifest.quote.amountUsd===1;
+  if(internalE2E)assertInternalE2EPrice(authorizedTest,manifest.variantId,manifest.quote.amountUsd);
   const recomputed=calculateQuote(manifest.quoteInput);
-  const variant=resolveShopifyVariant(recomputed,manifest.files.length);
-  if(recomputed.amountUsd!==manifest.quote.amountUsd||variant!==manifest.variantId)
+  const variant=internalE2E?INTERNAL_E2E_USD1.variantId:resolveShopifyVariant(recomputed,manifest.files.length);
+  if((!internalE2E&&recomputed.amountUsd!==manifest.quote.amountUsd)||variant!==manifest.variantId)
    return NextResponse.json({error:"STORED_QUOTE_MISMATCH"},{status:409});
   if(recomputed.requiresReview || (service!=="invoice" && service!=="consolidation")) return NextResponse.json({error:"SERVICE_NOT_READY"},{status:503});
   // Multiple independent gates prevent accepting payments before delivery is verified.
@@ -83,10 +86,10 @@ export async function POST(req:NextRequest){
    const checkoutUrl=buildBoundCartPermalink({
     intakeId:id,
     variantId:manifest.variantId,
-    amountUsd:recomputed.amountUsd,
+    amountUsd:internalE2E?1:recomputed.amountUsd,
     expiresAt:Math.floor(Date.now()/1000)+1800
    },bindingSecret,shopDomain);
-   return NextResponse.json({checkoutUrl,id,amountUsd:recomputed.amountUsd,testMode:authorizedTest},{headers:{"Cache-Control":"no-store"}});
+   return NextResponse.json({checkoutUrl,id,amountUsd:internalE2E?1:recomputed.amountUsd,testMode:authorizedTest},{headers:{"Cache-Control":"no-store"}});
   }
   // Checkout stays disabled until authenticated paid-order linkage and worker delivery are ready.
   return NextResponse.json({
