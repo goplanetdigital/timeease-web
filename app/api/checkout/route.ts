@@ -46,7 +46,7 @@ export async function POST(req:NextRequest){
   const manifest=JSON.parse(Buffer.concat(chunks).toString("utf8")) as {
    id?:string;service?:TimeEaseService;quote?:{amountUsd?:number};
    variantId?:string;files?:Array<{pathname?:string;bytes?:number}>;status?:string;
-   quoteInput?:QuoteInput;checkoutOrderId?:unknown;
+   quoteInput?:QuoteInput;checkoutOrderId?:unknown;internalE2ETest?:unknown;
   };
   if(manifest.id!==id||manifest.status!=="AWAITING_PAYMENT"||manifest.checkoutOrderId!==null||!Array.isArray(manifest.files)||manifest.files.length<1||manifest.files.length>100)
    return NextResponse.json({error:"INVALID_INTAKE_STATE"},{status:409});
@@ -70,11 +70,13 @@ export async function POST(req:NextRequest){
    return NextResponse.json({error:"INVALID_INTAKE_QUOTE"},{status:409});
   if(!manifest.quoteInput||manifest.quoteInput.service!==service||manifest.quoteInput.fileCount!==manifest.files.length)
    return NextResponse.json({error:"INVALID_QUOTE_INPUT"},{status:409});
-  const internalE2E=authorizedTest&&manifest.variantId===INTERNAL_E2E_USD1.variantId&&manifest.quote.amountUsd===1;
+  const isTestManifest=manifest.internalE2ETest===true;
+  if(isTestManifest&&!authorizedTest)return NextResponse.json({error:"INTERNAL_TEST_AUTH_REQUIRED"},{status:401});
+  const internalE2E=isTestManifest&&authorizedTest&&manifest.variantId===INTERNAL_E2E_USD1.variantId&&manifest.quote.amountUsd===1;
   if(internalE2E)assertInternalE2EPrice(authorizedTest,manifest.variantId,manifest.quote.amountUsd);
   const recomputed=calculateQuote(manifest.quoteInput);
   const variant=internalE2E?INTERNAL_E2E_USD1.variantId:resolveShopifyVariant(recomputed,manifest.files.length);
-  if((!internalE2E&&recomputed.amountUsd!==manifest.quote.amountUsd)||variant!==manifest.variantId)
+  if((isTestManifest&&!internalE2E)||(!internalE2E&&recomputed.amountUsd!==manifest.quote.amountUsd)||variant!==manifest.variantId)
    return NextResponse.json({error:"STORED_QUOTE_MISMATCH"},{status:409});
   if(recomputed.requiresReview || (service!=="invoice" && service!=="consolidation")) return NextResponse.json({error:"SERVICE_NOT_READY"},{status:503});
   // Multiple independent gates prevent accepting payments before delivery is verified.
