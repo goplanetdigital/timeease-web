@@ -1,5 +1,8 @@
 import {get} from "@vercel/blob";
 import type {CheckoutTokenPayload} from "./checkout-binding.ts";
+import {INTERNAL_E2E_USD1} from "./internal-e2e-pricing";
+import {calculateQuote,type QuoteInput} from "./upload-first-pricing";
+import {resolveShopifyVariant} from "./shopify-variants";
 
 export async function verifyStoredIntake(
  binding:CheckoutTokenPayload,
@@ -29,6 +32,7 @@ export async function verifyStoredIntake(
  if(!raw||typeof raw!=="object")return false;
  const data=raw as {
   id?:unknown;variantId?:unknown;status?:unknown;checkoutOrderId?:unknown;
+  internalE2ETest?:unknown;quoteInput?:QuoteInput;service?:unknown;
   quote?:{amountUsd?:unknown;currency?:unknown};
   files?:Array<{pathname?:unknown;bytes?:unknown}>;
  };
@@ -36,6 +40,17 @@ export async function verifyStoredIntake(
  data.quote?.amountUsd!==binding.amountUsd||data.quote?.currency!=="USD"||
  data.status!=="AWAITING_PAYMENT"||data.checkoutOrderId!==null||
  !Array.isArray(data.files)||data.files.length<1||data.files.length>100)return false;
+ if(!data.quoteInput||data.service!==data.quoteInput.service||data.quoteInput.fileCount!==data.files.length)return false;
+ let recomputed;
+ try{recomputed=calculateQuote(data.quoteInput)}catch{return false}
+ if(recomputed.requiresReview||!["invoice","consolidation"].includes(recomputed.service))return false;
+ if(data.internalE2ETest===true){
+  if(recomputed.service!=="invoice"||data.quoteInput.tier!=="basic"||data.files.length!==1||
+   binding.variantId!==INTERNAL_E2E_USD1.variantId||binding.amountUsd!==INTERNAL_E2E_USD1.amountUsd)return false;
+ }else{
+  if(data.internalE2ETest!==false&&data.internalE2ETest!==undefined)return false;
+  if(binding.amountUsd!==recomputed.amountUsd||binding.variantId!==resolveShopifyVariant(recomputed,data.files.length))return false;
+ }
  let total=0;
  const seen=new Set<string>();
  for(const file of data.files){

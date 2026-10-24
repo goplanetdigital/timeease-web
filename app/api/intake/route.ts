@@ -1,4 +1,6 @@
 import {put,del} from "@vercel/blob";
+import {createHash,timingSafeEqual} from "node:crypto";
+import {INTERNAL_E2E_USD1} from "../../../lib/internal-e2e-pricing";
 import {resolveShopifyVariant} from "../../../lib/shopify-variants";
 import {checkoutIsEnabled} from "../../../lib/checkout-readiness";
 import {NextRequest,NextResponse} from "next/server";
@@ -11,6 +13,15 @@ export async function POST(req:NextRequest){
   const length=req.headers.get("content-length");
   if(length && (!/^[0-9]+$/.test(length)||Number(length)>3.5*1024*1024))
    return NextResponse.json({error:"UPLOAD_TOO_LARGE_MAX_3MB"},{status:413});
+  const internalTest=req.headers.get("x-timeease-internal-e2e")==="usd1";
+  if(internalTest){
+   const expected=process.env.TIMEEASE_V2_WORKER_SECRET;
+   const supplied=req.headers.get("authorization");
+   if(!expected||expected.length<32||!supplied?.startsWith("Bearer "))return NextResponse.json({error:"UNAUTHORIZED"},{status:401});
+   const actual=createHash("sha256").update(supplied.slice(7)).digest();
+   const required=createHash("sha256").update(expected).digest();
+   if(!timingSafeEqual(actual,required))return NextResponse.json({error:"UNAUTHORIZED"},{status:401});
+  }
   const form=await req.formData();
   const service=String(form.get("service")||"") as TimeEaseService;
   if(!Object.hasOwn(ACCEPT,service))return NextResponse.json({error:"INVALID_SERVICE"},{status:400});
@@ -33,7 +44,9 @@ export async function POST(req:NextRequest){
   const catalogueRows=Number(form.get("catalogueRows"));
   const quote=calculateQuote({service,fileCount:docs.length,tier,catalogueRows});
   if(quote.requiresReview || (service!=="invoice" && service!=="consolidation")) return NextResponse.json({error:"SERVICE_NOT_READY"},{status:503});
-  const variantId=resolveShopifyVariant(quote,docs.length);
+  if(internalTest&&(service!=="invoice"||docs.length!==1||tier!=="basic"))return NextResponse.json({error:"INVALID_INTERNAL_TEST_SERVICE"},{status:400});
+  const storedQuote=internalTest?{...quote,amountUsd:INTERNAL_E2E_USD1.amountUsd}:quote;
+  const variantId=internalTest?INTERNAL_E2E_USD1.variantId:resolveShopifyVariant(quote,docs.length);
   if(!variantId)return NextResponse.json({error:"SHOPIFY_VARIANT_NOT_CONFIGURED"},{status:503});
   const id=crypto.randomUUID();
   const prefix="intake-v2/"+id+"/";
@@ -45,13 +58,13 @@ export async function POST(req:NextRequest){
    const blob=await put(prefix+"file-"+String(i+1).padStart(3,"0")+"."+suffix,file,{access:"private",addRandomSuffix:false,contentType:"application/octet-stream",token:process.env.BLOB_READ_WRITE_TOKEN});
    stored.push({pathname:blob.pathname,bytes:file.size,originalName:file.name});
   }
-  const manifest={id,service,quote,quoteInput:{service,fileCount:docs.length,tier,catalogueRows},variantId,files:stored,status:"AWAITING_PAYMENT",createdAt:new Date().toISOString(),checkoutOrderId:null};
+  const manifest={id,service,quote:storedQuote,internalE2ETest:internalTest,quoteInput:{service,fileCount:docs.length,tier,catalogueRows},variantId,files:stored,status:"AWAITING_PAYMENT",createdAt:new Date().toISOString(),checkoutOrderId:null};
   await put(prefix+"manifest.json",JSON.stringify(manifest),{access:"private",addRandomSuffix:false,contentType:"application/json",token:process.env.BLOB_READ_WRITE_TOKEN});
   }catch(uploadError){
    // Do not retain a partial batch if the manifest or any document fails to save.
    if(stored.length){try{await del(stored.map(f=>f.pathname),{token:process.env.BLOB_READ_WRITE_TOKEN});}catch(cleanupError){console.error("timeease_intake_cleanup_failed",cleanupError instanceof Error?cleanupError.message:"unknown");}}
    throw uploadError;
   }
-  return NextResponse.json({id,quote,status:"AWAITING_PAYMENT",checkoutReady:checkoutIsEnabled()},{status:201,headers:{"Cache-Control":"no-store"}});
+  return NextResponse.json({id,quote:storedQuote,status:"AWAITING_PAYMENT",checkoutReady:checkoutIsEnabled()},{status:201,headers:{"Cache-Control":"no-store"}});
  }catch(e){const message=e instanceof Error?e.message:"UPLOAD_FAILED";const expected=/^(INVALID_|SELECT_|USE_|TOO_MANY_|UNSUPPORTED_)/.test(message);console.error("timeease_intake_failure",message);return NextResponse.json({error:expected?message:"UPLOAD_FAILED"},{status:expected?400:500})}
 }
