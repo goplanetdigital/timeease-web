@@ -21,6 +21,7 @@ test('rejects missing, duplicate and tampered bindings',()=>{
  const token=signCheckoutToken(payload,secret);
  assert.equal(verifyBoundShopifyOrder(bound([]),secret,now),null);
  assert.equal(verifyBoundShopifyOrder(bound([attr(token),attr(token)]),secret,now),null);
+ assert.equal(verifyBoundShopifyOrder(bound([attr(token),{name:'_timeease_checkout_binding',value:42}]),secret,now),null);
  assert.equal(verifyBoundShopifyOrder(bound([attr(token.slice(0,-1)+'X')]),secret,now),null);
 });
 test('rejects expired binding',()=>{
