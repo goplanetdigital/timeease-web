@@ -73,7 +73,7 @@ export async function POST(req:NextRequest){
   const isTestManifest=manifest.internalE2ETest===true;
   if(isTestManifest&&!authorizedTest)return NextResponse.json({error:"INTERNAL_TEST_AUTH_REQUIRED"},{status:401});
   const internalE2E=isTestManifest&&authorizedTest&&manifest.variantId===INTERNAL_E2E_USD1.variantId&&manifest.quote.amountUsd===1;
-  if(internalE2E)assertInternalE2EPrice(authorizedTest,manifest.variantId,manifest.quote.amountUsd);
+  if(internalE2E)assertInternalE2EPrice(authorizedTest,manifest.variantId,manifest.quote.amountUsd!);
   const recomputed=calculateQuote(manifest.quoteInput);
   const variant=internalE2E?INTERNAL_E2E_USD1.variantId:resolveShopifyVariant(recomputed,manifest.files.length);
   if((isTestManifest&&!internalE2E)||(!internalE2E&&recomputed.amountUsd!==manifest.quote.amountUsd)||variant!==manifest.variantId)
