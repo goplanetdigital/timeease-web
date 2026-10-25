@@ -30,13 +30,25 @@ export async function GET(request:NextRequest){
   try{
    const result=await client.query(`SELECT current_database() AS database,current_user AS role,
      (SELECT ssl FROM pg_stat_ssl WHERE pid=pg_backend_pid()) AS tls_active,
-     (SELECT version FROM pg_stat_ssl WHERE pid=pg_backend_pid()) AS tls_version`);
+     (SELECT version FROM pg_stat_ssl WHERE pid=pg_backend_pid()) AS tls_version,
+     current_setting('neon.branch_id',true) AS branch_id,
+     current_setting('neon.project_id',true) AS project_id,
+     (SELECT rolsuper OR rolcreatedb OR rolcreaterole OR rolbypassrls OR rolreplication
+       FROM pg_roles WHERE rolname=current_user) AS elevated,
+     pg_has_role(current_user,'neon_superuser','MEMBER') AS neon_superuser_member,
+     has_table_privilege(current_user,'public.timeease_v2_orders','SELECT') AS can_select,
+     has_table_privilege(current_user,'public.timeease_v2_orders','INSERT') OR
+     has_table_privilege(current_user,'public.timeease_v2_orders','DELETE') OR
+     has_table_privilege(current_user,'public.timeease_v2_orders','TRUNCATE') AS forbidden_write`);
    const row=result.rows[0];
    if(row?.role!=='timeease_test_worker'||row?.database!=='neondb')return respond('TEST_ROLE_MISMATCH',503);
+   if(row?.branch_id!=='br-rough-butterfly-aox5mukp'||row?.project_id!=='odd-base-63790740')return respond('TEST_BRANCH_MISMATCH',503);
+   if(row?.elevated!==false||row?.neon_superuser_member!==false||row?.forbidden_write!==false||row?.can_select!==true)return respond('TEST_LEAST_PRIVILEGE_REQUIRED',503);
    if(row?.tls_active!==true)return respond('TEST_TLS_REQUIRED',503);
    const stream=client.connection.stream as unknown as {authorized?:boolean};
    if(stream.authorized!==true)return respond('TEST_TLS_CERTIFICATE_UNVERIFIED',503);
    return NextResponse.json({connected:true,database:row.database,role:row.role,
+    leastPrivilege:{elevated:false,neonSuperuserMember:false,forbiddenWrite:false,canSelect:true},
     tls:{active:true,version:row.tls_version,certificateVerified:true,mode:'verify-full'},
     neon:{branch:'br-rough-butterfly-aox5mukp',endpoint:EXPECTED_HOST,endpointMatched:true}},
     {headers:{'Cache-Control':'no-store'}});
