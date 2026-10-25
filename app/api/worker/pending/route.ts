@@ -25,7 +25,7 @@ export async function GET(req:NextRequest){
  try{
   pool??=new Pool({connectionString,max:3,connectionTimeoutMillis:5000});
   const result=await pool.query<{intake_id:string}>(
-   "SELECT intake_id FROM timeease_v2_orders WHERE status='PAID' ORDER BY created_at ASC LIMIT $1",
+   "SELECT intake_id FROM timeease_v2_orders WHERE status='PAID' AND source_manifest_path = 'intake-v2/' || intake_id::text || '/manifest.json' ORDER BY created_at ASC LIMIT $1",
    [Number(limitRaw)]);
   return respond({intakeIds:result.rows.map(row=>row.intake_id),intakeId:result.rows[0]?.intake_id??null},200);
  }catch{return respond({error:"WORKER_LEDGER_UNAVAILABLE"},503)}

@@ -17,6 +17,7 @@ export async function claimPaidJob(intakeId:string):Promise<PaidJob|null>{
  SET status='PROCESSING',processing_started_at=now(),
  processing_attempts=processing_attempts+1
  WHERE intake_id=$1 AND status='PAID'
+ AND source_manifest_path = 'intake-v2/' || intake_id::text || '/manifest.json'
  RETURNING intake_id,shopify_order_id,shopify_shop_domain,variant_id,
  amount_usd,customer_email,source_manifest_path,processing_attempts`,[intakeId]);
  return result.rowCount===1?result.rows[0]:null;
