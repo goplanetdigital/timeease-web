@@ -46,3 +46,20 @@ export async function flagForReview(intakeId:string,reason:string):Promise<boole
  WHERE intake_id=$1 AND status='PROCESSING' RETURNING intake_id`,[intakeId,reason]);
  return result.rowCount===1;
 }
+
+/** Quarantine stalled processing jobs without retrying or resending customer email.
+ * Invoke from a separately authenticated maintenance path after operational review.
+ */
+export async function quarantineStaleProcessingJobs(olderThanMinutes:number=15,limit:number=20):Promise<string[]>{
+ if(!Number.isInteger(olderThanMinutes)||olderThanMinutes<10||olderThanMinutes>1440)throw new Error("INVALID_STALE_WINDOW");
+ if(!Number.isInteger(limit)||limit<1||limit>100)throw new Error("INVALID_STALE_LIMIT");
+ const result=await db().query<{intake_id:string}>(`WITH stale AS (
+ SELECT intake_id FROM timeease_v2_orders
+ WHERE status='PROCESSING' AND processing_started_at < now()-($1::integer * interval '1 minute')
+ ORDER BY processing_started_at ASC LIMIT $2 FOR UPDATE SKIP LOCKED
+ ) UPDATE timeease_v2_orders o
+ SET status='REVIEW_REQUIRED',last_error='PROCESSING_TIMEOUT_MANUAL_REVIEW_NO_AUTO_RESEND'
+ FROM stale WHERE o.intake_id=stale.intake_id AND o.status='PROCESSING'
+ RETURNING o.intake_id`,[olderThanMinutes,limit]);
+ return result.rows.map(r=>r.intake_id);
+}
