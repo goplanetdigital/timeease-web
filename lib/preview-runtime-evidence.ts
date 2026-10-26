@@ -1,23 +1,27 @@
 import {Pool} from 'pg';
 import {list} from '@vercel/blob';
+import {getVercelOidcToken} from '@vercel/oidc';
 import {isIsolatedPreview} from './test-worker-guards';
 export const PREVIEW_BLOB_STORE='store_FI8APVuc1xuRZkAg';
 const PREVIEW_HOST='ep-summer-salad-aoeax66z.c-2.ap-southeast-1.aws.neon.tech';
 /** Never supplies the inherited production read-write token in Preview. */
-export function previewBlobOptions(env:Record<string,string|undefined>){
- if(!isIsolatedPreview(env)||env.TIMEEASE_PREVIEW_BLOB_STORE_ID!==PREVIEW_BLOB_STORE||!env.VERCEL_OIDC_TOKEN?.trim())
+export async function previewBlobOptions(env:Record<string,string|undefined>){
+ if(!isIsolatedPreview(env)||env.TIMEEASE_PREVIEW_BLOB_STORE_ID!==PREVIEW_BLOB_STORE)
   throw Error('PREVIEW_BLOB_OIDC_REQUIRED');
+ // Require the SDK's runtime OIDC provider before allowing its auth resolver.
+ // Never persist or return its credential; Blob SDK retrieves it itself.
+ if(!(await getVercelOidcToken()).trim())throw Error('PREVIEW_BLOB_OIDC_REQUIRED');
  return {storeId:PREVIEW_BLOB_STORE};
 }
 /** Boolean-only operational evidence; no order rows, object names or credentials. */
 export async function previewRuntimeEvidence(env:Record<string,string|undefined>){
- const evidence={readOnly:true,database:{queryVerified:false,identityVerified:false,leastPrivilegeVerified:false,tlsActive:false,tlsCertificateVerified:false,readOnlyTransaction:false},blob:{storeMatched:env.TIMEEASE_PREVIEW_BLOB_STORE_ID===PREVIEW_BLOB_STORE,oidcConfigured:Boolean(env.VERCEL_OIDC_TOKEN?.trim()),readVerified:false,productionTokenUsed:false,writeVerified:false}};
+ const evidence={readOnly:true,configuration:{preview:env.VERCEL_ENV==='preview',isolatedMode:env.TIMEEASE_ISOLATED_TEST_MODE==='true',checkoutOff:env.TIMEEASE_V2_CHECKOUT_ENABLED==='false',ledgerOff:env.TIMEEASE_V2_PAYMENT_LEDGER_ENABLED==='false'},database:{status:'CONFIG_REQUIRED',queryVerified:false,identityVerified:false,leastPrivilegeVerified:false,tlsActive:false,tlsCertificateVerified:false,readOnlyTransaction:false},blob:{storeMatched:env.TIMEEASE_PREVIEW_BLOB_STORE_ID===PREVIEW_BLOB_STORE,oidcConfigured:false,readVerified:false,productionTokenUsed:false,writeVerified:false}};
  if(!isIsolatedPreview(env))return evidence;
  await Promise.all([
   (async()=>{
    let url:URL;
-   try{url=new URL(env.TIMEEASE_DB_DATABASE_URL||'');}catch{return;}
-   if(!['postgres:','postgresql:'].includes(url.protocol)||url.hostname!==PREVIEW_HOST||url.username!=='timeease_worker_limited'||url.pathname!=='/neondb')return;
+   try{url=new URL(env.TIMEEASE_DB_DATABASE_URL||'');}catch{evidence.database.status='URL_INVALID';return;}
+   if(!['postgres:','postgresql:'].includes(url.protocol)||url.hostname!==PREVIEW_HOST||url.username!=='timeease_worker_limited'||url.pathname!=='/neondb'){evidence.database.status='URL_IDENTITY_MISMATCH';return;}
    url.searchParams.set('sslmode','verify-full');
    const pool=new Pool({connectionString:url.toString(),max:1,connectionTimeoutMillis:4000,statement_timeout:4000,query_timeout:5000});
    try{
@@ -39,13 +43,18 @@ export async function previewRuntimeEvidence(env:Record<string,string|undefined>
      evidence.database.readOnlyTransaction=row?.read_only===true;
      evidence.database.tlsActive=row?.tls_active===true;
      evidence.database.tlsCertificateVerified=(client.connection.stream as unknown as {authorized?:boolean}).authorized===true;
+     evidence.database.status=Object.entries(evidence.database).filter(([key])=>key!=='status').every(([,value])=>value===true)?'VERIFIED':'VERIFICATION_FAILED';
     }finally{await client.query('ROLLBACK').catch(()=>{});client.release();}
-   }catch{/* Deliberately return no database errors or connection details. */}
+   }catch(error){
+    const code=(error as {code?:unknown})?.code;
+    evidence.database.status=typeof code==='string'&&/^[A-Z0-9_]{2,60}$/.test(code)?'ERROR_'+code:'CONNECTION_FAILED';
+   }
    finally{await pool.end().catch(()=>{});}
   })(),
   (async()=>{
    try{
-    const options=previewBlobOptions(env);
+    const options=await previewBlobOptions(env);
+    evidence.blob.oidcConfigured=true;
     // Read only an empty diagnostic namespace; never return names or object data.
     await list({...options,prefix:'preview-isolation-check/',limit:1,abortSignal:AbortSignal.timeout(5000)});
     evidence.blob.readVerified=true;
