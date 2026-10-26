@@ -17,8 +17,16 @@ PR #20 remains Draft. No Production configuration, orders, workers or secrets ch
 Authenticated diagnostic checks actual queried Neon branch/project, rejects elevated role flags, neon_superuser inheritance and forbidden INSERT/DELETE/TRUNCATE privileges, as well as requiring SELECT and verified native PostgreSQL TLS. CI runs behavioral identity security tests.
 
 ## Minimum operator actions
-1. Use a write-capable Neon admin connection to the exact Preview branch to apply the reviewed permission repair in preview-worker-permissions.sql. The connection tool used here is read-only. Do not rerun CREATE ROLE or reset a password. If SQL fails, inspect the error and transaction state first.
+1. The legacy-role REVOKE approach is superseded. The updated preview-worker-permissions.sql creates only timeease_worker_limited with NOLOGIN and narrow SELECT/column UPDATE privileges on this Preview branch. It leaves timeease_test_worker untouched. If the new role already exists, the script stops. On failure inspect the error and transaction state before retrying. After permissions are independently verified, the operator must set a new dedicated login credential privately and update only this PR branch Preview TIMEEASE_DB_DATABASE_URL. No existing secret is retrieved, reused, or reset.
 2. From an already authorized Preview client with its existing test-worker authorization, request /api/test-worker/db-identity and retain the JSON evidence. Do not paste any secret into chat. Do not disable Vercel protection.
 3. Confirm an existing isolated Blob/Worker/mail test setup before any E2E. No shared Production storage writes, genuine payments or customer emails are permitted.
 
 PDF → Excel, Blob, mail, order E2E remain BLOCKED until these isolation checks pass. Shopify #1033 must remain REVIEW_REQUIRED; no Production delivery may be enabled by this PR.
+
+## Follow-up: protected Neon role membership
+- User SQL Editor confirmed neondb_owner on the exact Preview branch with read_only=off.
+- The prior DO block failed at REVOKE neon_superuser with SQLSTATE 42501. Subsequent independent SELECT confirms the old role retains elevated flags and timeease_worker_limited is absent.
+- Neon official roles docs require SQL-created roles for limited privileges: https://neon.com/docs/manage/roles . Do not create the replacement via Console Add role or API, which assigns neon_superuser membership.
+- Diagnostic now accepts only timeease_worker_limited. Legacy connection strings fail before opening any connection. No credential or role has been created by the agent. The operator creation script deliberately uses NOLOGIN; login/credential setup follows after permission validation.
+- Earlier Preview deployment a848868 was READY at dpl_GraJctPm6Z4Nq1B8Fgh9KkUfUbZv; deployed application JSON/TLS remains blocked by protection and application authentication.
+- QuoteFlow branch-specific DATABASE_URL was subsequently corrected by the operator; dpl_FN2x14T1tERs3xUXY1SgKdPhGuxT at commit 249a381 returned isolated=true with all four query identity checks true. It uses Neon HTTPS and does not attest native PostgreSQL TLS.

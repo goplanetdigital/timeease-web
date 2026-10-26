@@ -22,7 +22,7 @@ export async function GET(request:NextRequest){
  if(url.protocol!=='postgres:'&&url.protocol!=='postgresql:')return respond('TEST_DATABASE_INVALID',503);
  // Fail closed before opening any connection to a non-Preview endpoint.
  if(url.hostname!==EXPECTED_HOST)return respond('TEST_ENDPOINT_MISMATCH',503);
- if(url.username!=='timeease_test_worker'||url.pathname!=='/neondb')return respond('TEST_CONNECTION_IDENTITY_MISMATCH',503);
+ if(url.username!=='timeease_worker_limited'||url.pathname!=='/neondb')return respond('TEST_CONNECTION_IDENTITY_MISMATCH',503);
  url.searchParams.set('sslmode','verify-full');
  const pool=new Pool({connectionString:url.toString(),max:1,connectionTimeoutMillis:4000});
  try{
@@ -41,7 +41,7 @@ export async function GET(request:NextRequest){
      has_table_privilege(current_user,'public.timeease_v2_orders','DELETE') OR
      has_table_privilege(current_user,'public.timeease_v2_orders','TRUNCATE') AS forbidden_write`);
    const row=result.rows[0];
-   if(row?.role!=='timeease_test_worker'||row?.database!=='neondb')return respond('TEST_ROLE_MISMATCH',503);
+   if(row?.role!=='timeease_worker_limited'||row?.database!=='neondb')return respond('TEST_ROLE_MISMATCH',503);
    if(row?.branch_id!=='br-rough-butterfly-aox5mukp'||row?.project_id!=='odd-base-63790740')return respond('TEST_BRANCH_MISMATCH',503);
    if(row?.elevated!==false||row?.neon_superuser_member!==false||row?.forbidden_write!==false||row?.can_select!==true)return respond('TEST_LEAST_PRIVILEGE_REQUIRED',503);
    if(row?.tls_active!==true)return respond('TEST_TLS_REQUIRED',503);
