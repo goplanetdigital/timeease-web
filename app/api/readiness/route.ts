@@ -1,3 +1,4 @@
+import {previewBlobAccessBlocked} from "../../../lib/preview-blob-guard";
 import {NextResponse} from "next/server";
 import {checkoutIsEnabled,checkoutTestPrerequisitesReady} from "../../../lib/checkout-readiness";
 import {paymentLedgerSchemaReady} from "../../../lib/payment-ledger-schema-ready";
@@ -16,7 +17,8 @@ export async function GET(){
  return NextResponse.json({
   service:"timeease-upload-first",
   privateStorageConfigured,
-  intakeEnabled:privateStorageConfigured,
+  intakeEnabled:privateStorageConfigured&&!previewBlobAccessBlocked(process.env),
+  previewBlobAccessBlocked:previewBlobAccessBlocked(process.env),
   shopifyWebhookSecretConfigured,
   checkoutBindingConfigured,
   shopDomainConfigured,

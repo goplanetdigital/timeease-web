@@ -40,3 +40,9 @@ PDF → Excel, Blob, mail, order E2E remain BLOCKED until these isolation checks
 - Found intake could upload despite checkout being off; checkout could read manifests before its checkout gate. All seven Blob-facing handlers now reject Preview before parsing a body, reading storage, opening a database connection or invoking Shopify. No configuration flag can bypass the temporary block. Production/development request behavior remains unchanged. A later reviewed change may lift the block only after a separate existing Preview store and runtime isolation are verified.
 - Runtime diagnostic remains BLOCKED by deployment_authentication_required after the connector's authenticated-share redirect. Existing worker has no Preview credential mapping; no Production credential reused. Recent Preview runtime-log query returned no entries, which is not TLS/API acceptance.
 - V2 integration draft Zq06lp0qNiDzCdSy remains inactive. No workflow activated or executed, no orders changed, no mail sent. Shopify #1033 was not modified or independently revalidated.
+
+## Store metadata and readiness follow-up
+
+Read-only store metadata confirms store_2zPRAZaFbo6bhEfz (timeease-v2-secure-storage-20261013) is connected to timeease-v2-secure in production, preview and development. No tokens requested or displayed. A separate existing Preview store has not been identified; no store created.
+
+The authenticated connector retrieved real /api/readiness JSON from 74566c8. Its intakeEnabled=true contradicted the new Preview gate. Readiness now reports intakeEnabled=false and previewBlobAccessBlocked=true in Preview with the inherited token. No connection details or secrets are returned. The database diagnostic endpoint still failed through the connector's protected-deployment path; readiness reachability does not establish diagnostic authorization or native TLS.
