@@ -1,3 +1,4 @@
+import {previewBlobAccessBlocked} from "../../../../lib/preview-blob-guard";
 import {createHash,timingSafeEqual} from "node:crypto";
 import {NextRequest,NextResponse} from "next/server";
 import {markResultReady,markDelivered,flagForReview} from "../../../../lib/paid-job-claim";
@@ -14,6 +15,7 @@ function authorized(req:NextRequest,secret:string){
 }
 /** Worker reports only durable, independently produced outputs; no user-facing invocation. */
 export async function POST(req:NextRequest){
+ if(previewBlobAccessBlocked(process.env))return NextResponse.json({error:"PREVIEW_BLOB_ISOLATION_REQUIRED"},{status:503,headers:{"Cache-Control":"no-store"}});
  const secret=process.env.TIMEEASE_V2_WORKER_SECRET;
  if(!secret||secret.length<32||process.env.TIMEEASE_V2_PAYMENT_LEDGER_ENABLED!=="true")
   return reply({error:"WORKER_NOT_CONFIGURED"},503);

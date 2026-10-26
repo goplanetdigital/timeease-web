@@ -1,3 +1,4 @@
+import {previewBlobAccessBlocked} from "../../../../lib/preview-blob-guard";
 import {createHash,timingSafeEqual} from "node:crypto";
 import {get} from "@vercel/blob";
 import {NextRequest,NextResponse} from "next/server";
@@ -22,6 +23,7 @@ async function readLimited(stream:ReadableStream<Uint8Array>,limit:number):Promi
 }
 /** Private worker can fetch source bytes only for a paid, claimed order. */
 export async function GET(req:NextRequest){
+ if(previewBlobAccessBlocked(process.env))return NextResponse.json({error:"PREVIEW_BLOB_ISOLATION_REQUIRED"},{status:503,headers:{"Cache-Control":"no-store"}});
  const secret=process.env.TIMEEASE_V2_WORKER_SECRET;
  const dbUrl=process.env.TIMEEASE_DB_DATABASE_URL;
  const token=process.env.BLOB_READ_WRITE_TOKEN;

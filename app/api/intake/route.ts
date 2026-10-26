@@ -1,3 +1,4 @@
+import {previewBlobAccessBlocked} from "../../../lib/preview-blob-guard";
 import {put,del} from "@vercel/blob";
 import {createHash,timingSafeEqual} from "node:crypto";
 import {INTERNAL_E2E_USD1} from "../../../lib/internal-e2e-pricing";
@@ -8,6 +9,7 @@ import {calculateQuote,type TimeEaseService} from "../../../lib/upload-first-pri
 export const runtime="nodejs";
 const ACCEPT:Record<TimeEaseService,string[]>={invoice:[".pdf"],consolidation:[".pdf"],catalogue:[".csv",".xlsx"],resume:[".pdf",".docx",".txt"]};
 export async function POST(req:NextRequest){
+ if(previewBlobAccessBlocked(process.env))return NextResponse.json({error:"PREVIEW_BLOB_ISOLATION_REQUIRED"},{status:503,headers:{"Cache-Control":"no-store"}});
  try{
   if(!process.env.BLOB_READ_WRITE_TOKEN)return NextResponse.json({error:"STORAGE_NOT_CONFIGURED"},{status:503});
   const length=req.headers.get("content-length");

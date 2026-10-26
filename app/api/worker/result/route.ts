@@ -1,3 +1,4 @@
+import {previewBlobAccessBlocked} from "../../../../lib/preview-blob-guard";
 import {createHash,timingSafeEqual} from "node:crypto";
 import {NextRequest,NextResponse} from "next/server";
 import {put} from "@vercel/blob";
@@ -9,6 +10,7 @@ let pool:Pool|undefined;
 const respond=(body:unknown,status:number)=>NextResponse.json(body,{status,headers:{"Cache-Control":"no-store"}});
 /** Worker-only result upload. Caller must claim a paid order before storing output. */
 export async function POST(req:NextRequest){
+ if(previewBlobAccessBlocked(process.env))return NextResponse.json({error:"PREVIEW_BLOB_ISOLATION_REQUIRED"},{status:503,headers:{"Cache-Control":"no-store"}});
  const secret=process.env.TIMEEASE_V2_WORKER_SECRET;
  const dbUrl=process.env.TIMEEASE_DB_DATABASE_URL;
  const token=process.env.BLOB_READ_WRITE_TOKEN;

@@ -30,3 +30,13 @@ PDF → Excel, Blob, mail, order E2E remain BLOCKED until these isolation checks
 - Diagnostic now accepts only timeease_worker_limited. Legacy connection strings fail before opening any connection. No credential or role has been created by the agent. The operator creation script deliberately uses NOLOGIN; login/credential setup follows after permission validation.
 - Earlier Preview deployment a848868 was READY at dpl_GraJctPm6Z4Nq1B8Fgh9KkUfUbZv; deployed application JSON/TLS remains blocked by protection and application authentication.
 - QuoteFlow branch-specific DATABASE_URL was subsequently corrected by the operator; dpl_FN2x14T1tERs3xUXY1SgKdPhGuxT at commit 249a381 returned isolated=true with all four query identity checks true. It uses Neon HTTPS and does not attest native PostgreSQL TLS.
+
+## Follow-up: shared Blob access closed in Preview
+
+- Confirmed f0c2407 deployment dpl_CHKVYi7mkCj9hu8dxBwmnCr9uooE is READY, Preview target null, exact PR20 ref/SHA; PR remains Draft.
+- DATABASE_URL variable metadata is Preview-only. No secret decrypted or copied.
+- Read-only query authenticated as timeease_worker_limited returned neondb, odd-base-63790740, br-rough-butterfly-aox5mukp and order_count=0. This is connector evidence, not application-native TLS evidence.
+- BLOB_READ_WRITE_TOKEN metadata points to store_2zPRAZaFbo6bhEfz and one variable scoped to production, preview and development. Storage isolation FAIL; no Blob requests performed.
+- Found intake could upload despite checkout being off; checkout could read manifests before its checkout gate. All seven Blob-facing handlers now reject Preview before parsing a body, reading storage, opening a database connection or invoking Shopify. No configuration flag can bypass the temporary block. Production/development request behavior remains unchanged. A later reviewed change may lift the block only after a separate existing Preview store and runtime isolation are verified.
+- Runtime diagnostic remains BLOCKED by deployment_authentication_required after the connector's authenticated-share redirect. Existing worker has no Preview credential mapping; no Production credential reused. Recent Preview runtime-log query returned no entries, which is not TLS/API acceptance.
+- V2 integration draft Zq06lp0qNiDzCdSy remains inactive. No workflow activated or executed, no orders changed, no mail sent. Shopify #1033 was not modified or independently revalidated.

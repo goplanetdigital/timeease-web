@@ -1,3 +1,4 @@
+import {previewBlobAccessBlocked} from "../../../../lib/preview-blob-guard";
 import {NextRequest,NextResponse} from 'next/server';
 import {Pool} from 'pg';
 import {get} from '@vercel/blob';
@@ -5,6 +6,7 @@ import {createHash,timingSafeEqual} from 'node:crypto';
 export const runtime='nodejs';
 let pool:Pool|undefined;
 export async function GET(req:NextRequest){
+ if(previewBlobAccessBlocked(process.env))return NextResponse.json({error:"PREVIEW_BLOB_ISOLATION_REQUIRED"},{status:503,headers:{"Cache-Control":"no-store"}});
  const secret=process.env.TIMEEASE_V2_WORKER_SECRET;
  const db=process.env.TIMEEASE_DB_DATABASE_URL;
  const token=process.env.BLOB_READ_WRITE_TOKEN;

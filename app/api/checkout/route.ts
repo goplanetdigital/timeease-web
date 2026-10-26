@@ -1,3 +1,4 @@
+import {previewBlobAccessBlocked} from "../../../lib/preview-blob-guard";
 import {get} from "@vercel/blob";
 import {INTERNAL_E2E_USD1,assertInternalE2EPrice} from "../../../lib/internal-e2e-pricing";
 import {createHash,timingSafeEqual} from "node:crypto";
@@ -10,6 +11,7 @@ import {paymentLedgerSchemaReady} from "../../../lib/payment-ledger-schema-ready
 export const runtime="nodejs";
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export async function POST(req:NextRequest){
+ if(previewBlobAccessBlocked(process.env))return NextResponse.json({error:"PREVIEW_BLOB_ISOLATION_REQUIRED"},{status:503,headers:{"Cache-Control":"no-store"}});
  try{
   const {id,testMode}=await req.json();
   const requestedTest=testMode===true;
