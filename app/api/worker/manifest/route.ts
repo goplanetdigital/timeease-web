@@ -1,3 +1,4 @@
+import {blobAccessConfigured,blobAccessOptions} from "../../../../lib/blob-access";
 import {previewBlobAccessBlocked} from "../../../../lib/preview-blob-guard";
 import {NextRequest,NextResponse} from 'next/server';
 import {Pool} from 'pg';
@@ -9,19 +10,20 @@ export async function GET(req:NextRequest){
  if(previewBlobAccessBlocked(process.env))return NextResponse.json({error:"PREVIEW_BLOB_ISOLATION_REQUIRED"},{status:503,headers:{"Cache-Control":"no-store"}});
  const secret=process.env.TIMEEASE_V2_WORKER_SECRET;
  const db=process.env.TIMEEASE_DB_DATABASE_URL;
- const token=process.env.BLOB_READ_WRITE_TOKEN;
- if(!secret||secret.length<32||!db||!token||process.env.TIMEEASE_V2_PAYMENT_LEDGER_ENABLED!=='true')return NextResponse.json({error:'NOT_CONFIGURED'},{status:503});
+ const storageConfigured=blobAccessConfigured(process.env);
+ if(!secret||secret.length<32||!db||!storageConfigured||process.env.TIMEEASE_V2_PAYMENT_LEDGER_ENABLED!=='true')return NextResponse.json({error:'NOT_CONFIGURED'},{status:503});
  const auth=req.headers.get('authorization')||'';
  if(!auth.startsWith('Bearer ')||auth.length>519)return NextResponse.json({error:'UNAUTHORIZED'},{status:401});
  if(!timingSafeEqual(createHash('sha256').update(auth.slice(7)).digest(),createHash('sha256').update(secret).digest()))return NextResponse.json({error:'UNAUTHORIZED'},{status:401});
  const id=new URL(req.url).searchParams.get('intakeId')||'';
  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))return NextResponse.json({error:'INVALID_ID'},{status:400});
  try{
+  const blobOptions=await blobAccessOptions(process.env);
   pool??=new Pool({connectionString:db,max:3,connectionTimeoutMillis:5000});
   const path='intake-v2/'+id+'/manifest.json';
   const row=await pool.query('SELECT intake_id FROM timeease_v2_orders WHERE intake_id=$1 AND source_manifest_path=$2 AND status=$3',[id,path,'PROCESSING']);
   if(row.rowCount!==1)return NextResponse.json({error:'NOT_CLAIMED'},{status:409});
-  const blob=await get(path,{access:'private',token});
+  const blob=await get(path,{access:'private',...blobOptions});
   if(!blob?.stream)return NextResponse.json({error:'NOT_FOUND'},{status:404});
   // Enforce the limit while streaming; Content-Length and decoded text length are not trustworthy bounds.
   const reader=blob.stream.getReader();

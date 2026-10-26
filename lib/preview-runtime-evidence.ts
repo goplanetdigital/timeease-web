@@ -15,7 +15,7 @@ export async function previewBlobOptions(env:Record<string,string|undefined>){
 }
 /** Boolean-only operational evidence; no order rows, object names or credentials. */
 export async function previewRuntimeEvidence(env:Record<string,string|undefined>){
- const evidence={readOnly:true,configuration:{preview:env.VERCEL_ENV==='preview',isolatedMode:env.TIMEEASE_ISOLATED_TEST_MODE==='true',checkoutOff:env.TIMEEASE_V2_CHECKOUT_ENABLED==='false',ledgerOff:env.TIMEEASE_V2_PAYMENT_LEDGER_ENABLED==='false'},database:{status:'CONFIG_REQUIRED',queryVerified:false,identityVerified:false,leastPrivilegeVerified:false,tlsActive:false,tlsCertificateVerified:false,readOnlyTransaction:false},blob:{storeMatched:env.TIMEEASE_PREVIEW_BLOB_STORE_ID===PREVIEW_BLOB_STORE,oidcConfigured:false,readVerified:false,productionTokenUsed:false,writeVerified:false}};
+ const evidence={readOnly:true,configuration:{preview:env.VERCEL_ENV==='preview',isolatedMode:env.TIMEEASE_ISOLATED_TEST_MODE==='true',checkoutOff:env.TIMEEASE_V2_CHECKOUT_ENABLED==='false',ledgerOff:env.TIMEEASE_V2_PAYMENT_LEDGER_ENABLED==='false'},database:{status:'CONFIG_REQUIRED',queryVerified:false,identityVerified:false,leastPrivilegeVerified:false,tlsActive:false,tlsCertificateVerified:false,readOnlyTransaction:false,postgresBackendTlsReported:false,tlsVersion:''},blob:{storeMatched:env.TIMEEASE_PREVIEW_BLOB_STORE_ID===PREVIEW_BLOB_STORE,oidcConfigured:false,readVerified:false,productionTokenUsed:false,writeVerified:false}};
  if(!isIsolatedPreview(env))return evidence;
  await Promise.all([
   (async()=>{
@@ -41,9 +41,14 @@ export async function previewRuntimeEvidence(env:Record<string,string|undefined>
      evidence.database.identityVerified=row?.role==='timeease_worker_limited'&&row?.database==='neondb'&&row?.project_id==='odd-base-63790740'&&row?.branch_id==='br-rough-butterfly-aox5mukp';
      evidence.database.leastPrivilegeVerified=row?.elevated===false&&row?.neon_superuser_member===false&&row?.can_select===true&&row?.forbidden_write===false;
      evidence.database.readOnlyTransaction=row?.read_only===true;
-     evidence.database.tlsActive=row?.tls_active===true;
-     evidence.database.tlsCertificateVerified=(client.connection.stream as unknown as {authorized?:boolean}).authorized===true;
-     evidence.database.status=Object.entries(evidence.database).filter(([key])=>key!=='status').every(([,value])=>value===true)?'VERIFIED':'VERIFICATION_FAILED';
+     // pg_stat_ssl describes the PostgreSQL backend connection, which may be
+     // behind a TLS-terminating Neon proxy. Keep it separate from client TLS.
+     const stream=client.connection.stream as unknown as {authorized?:boolean;encrypted?:boolean;getProtocol?:()=>string|null};
+     evidence.database.postgresBackendTlsReported=row?.tls_active===true;
+     evidence.database.tlsVersion=stream.getProtocol?.()||'';
+     evidence.database.tlsActive=stream.encrypted===true&&['TLSv1.2','TLSv1.3'].includes(evidence.database.tlsVersion);
+     evidence.database.tlsCertificateVerified=stream.authorized===true;
+     evidence.database.status=['queryVerified','identityVerified','leastPrivilegeVerified','tlsActive','tlsCertificateVerified','readOnlyTransaction'].every(key=>evidence.database[key as keyof typeof evidence.database]===true)?'VERIFIED':'VERIFICATION_FAILED';
     }finally{await client.query('ROLLBACK').catch(()=>{});client.release();}
    }catch(error){
     const code=(error as {code?:unknown})?.code;

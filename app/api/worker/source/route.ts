@@ -1,3 +1,4 @@
+import {blobAccessConfigured,blobAccessOptions} from "../../../../lib/blob-access";
 import {previewBlobAccessBlocked} from "../../../../lib/preview-blob-guard";
 import {createHash,timingSafeEqual} from "node:crypto";
 import {get} from "@vercel/blob";
@@ -26,8 +27,8 @@ export async function GET(req:NextRequest){
  if(previewBlobAccessBlocked(process.env))return NextResponse.json({error:"PREVIEW_BLOB_ISOLATION_REQUIRED"},{status:503,headers:{"Cache-Control":"no-store"}});
  const secret=process.env.TIMEEASE_V2_WORKER_SECRET;
  const dbUrl=process.env.TIMEEASE_DB_DATABASE_URL;
- const token=process.env.BLOB_READ_WRITE_TOKEN;
- if(!secret||secret.length<32||!dbUrl||!token||process.env.TIMEEASE_V2_PAYMENT_LEDGER_ENABLED!=="true")
+ const storageConfigured=blobAccessConfigured(process.env);
+ if(!secret||secret.length<32||!dbUrl||!storageConfigured||process.env.TIMEEASE_V2_PAYMENT_LEDGER_ENABLED!=="true")
   return respond({error:"WORKER_NOT_CONFIGURED"},503);
  const auth=req.headers.get("authorization")||"";
  if(!auth.startsWith("Bearer ")||auth.length>519)return respond({error:"UNAUTHORIZED"},401);
@@ -41,6 +42,7 @@ export async function GET(req:NextRequest){
  if(!ID.test(intakeId)||!Number.isInteger(index)||index<0||index>99)
   return respond({error:"INVALID_SOURCE_REFERENCE"},400);
  try{
+  const blobOptions=await blobAccessOptions(process.env);
   pool??=new Pool({connectionString:dbUrl,max:3,connectionTimeoutMillis:5000});
   const result=await pool.query<{source_manifest_path:string}>(
    "SELECT source_manifest_path FROM timeease_v2_orders WHERE intake_id=$1 AND status='PROCESSING'",
@@ -48,7 +50,7 @@ export async function GET(req:NextRequest){
   const path="intake-v2/"+intakeId+"/manifest.json";
   if(result.rowCount!==1||result.rows[0].source_manifest_path!==path)
    return respond({error:"PAID_JOB_NOT_CLAIMED"},409);
-  const blob=await get(path,{access:"private",token});
+  const blob=await get(path,{access:"private",...blobOptions});
   if(!blob?.stream)return respond({error:"MANIFEST_NOT_FOUND"},404);
   const manifestBytes=await readLimited(blob.stream,100000);
   if(!manifestBytes)return respond({error:"INVALID_MANIFEST"},409);
@@ -59,7 +61,7 @@ export async function GET(req:NextRequest){
    typeof file.pathname!=="string"||!file.pathname.startsWith("intake-v2/"+intakeId+"/file-")||
    file.pathname.includes("..")||!Number.isSafeInteger(file.bytes)||!file.bytes||file.bytes>3145728)
    return respond({error:"INVALID_SOURCE_MANIFEST"},409);
-  const source=await get(file.pathname,{access:"private",token});
+  const source=await get(file.pathname,{access:"private",...blobOptions});
   if(!source?.stream)return respond({error:"SOURCE_NOT_FOUND"},404);
   const bytes=await readLimited(source.stream,file.bytes);
   if(!bytes||bytes.length!==file.bytes)return respond({error:"SOURCE_SIZE_MISMATCH"},409);

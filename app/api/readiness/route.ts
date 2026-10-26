@@ -1,3 +1,4 @@
+import {blobAccessConfigured} from "../../../lib/blob-access";
 import {previewRuntimeEvidence} from "../../../lib/preview-runtime-evidence";
 import {previewBlobAccessBlocked} from "../../../lib/preview-blob-guard";
 import {NextResponse} from "next/server";
@@ -5,7 +6,7 @@ import {checkoutIsEnabled,checkoutTestPrerequisitesReady} from "../../../lib/che
 import {paymentLedgerSchemaReady} from "../../../lib/payment-ledger-schema-ready";
 export const runtime="nodejs";
 export async function GET(){
- const privateStorageConfigured=Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+ const privateStorageConfigured=blobAccessConfigured(process.env);
  const shopifyWebhookSecretConfigured=Boolean(process.env.SHOPIFY_WEBHOOK_SECRET);
  const checkoutBindingConfigured=Boolean(process.env.TIMEEASE_CHECKOUT_BINDING_SECRET);
  const shopDomainConfigured=Boolean(process.env.SHOPIFY_SHOP_DOMAIN);

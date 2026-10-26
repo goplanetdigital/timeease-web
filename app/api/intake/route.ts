@@ -1,3 +1,4 @@
+import {blobAccessConfigured,blobAccessOptions} from "../../../lib/blob-access";
 import {previewBlobAccessBlocked} from "../../../lib/preview-blob-guard";
 import {put,del} from "@vercel/blob";
 import {createHash,timingSafeEqual} from "node:crypto";
@@ -11,7 +12,8 @@ const ACCEPT:Record<TimeEaseService,string[]>={invoice:[".pdf"],consolidation:["
 export async function POST(req:NextRequest){
  if(previewBlobAccessBlocked(process.env))return NextResponse.json({error:"PREVIEW_BLOB_ISOLATION_REQUIRED"},{status:503,headers:{"Cache-Control":"no-store"}});
  try{
-  if(!process.env.BLOB_READ_WRITE_TOKEN)return NextResponse.json({error:"STORAGE_NOT_CONFIGURED"},{status:503});
+  if(!blobAccessConfigured(process.env))return NextResponse.json({error:"STORAGE_NOT_CONFIGURED"},{status:503});
+  const blobOptions=await blobAccessOptions(process.env);
   const length=req.headers.get("content-length");
   if(length && (!/^[0-9]+$/.test(length)||Number(length)>3.5*1024*1024))
    return NextResponse.json({error:"UPLOAD_TOO_LARGE_MAX_3MB"},{status:413});
@@ -57,14 +59,14 @@ export async function POST(req:NextRequest){
   for(let i=0;i<docs.length;i++){
    const file=docs[i];
    const suffix=file.name.toLowerCase().split(".").pop();
-   const blob=await put(prefix+"file-"+String(i+1).padStart(3,"0")+"."+suffix,file,{access:"private",addRandomSuffix:false,contentType:"application/octet-stream",token:process.env.BLOB_READ_WRITE_TOKEN});
+   const blob=await put(prefix+"file-"+String(i+1).padStart(3,"0")+"."+suffix,file,{access:"private",addRandomSuffix:false,contentType:"application/octet-stream",...blobOptions});
    stored.push({pathname:blob.pathname,bytes:file.size,originalName:file.name});
   }
   const manifest={id,service,quote:storedQuote,internalE2ETest:internalTest,quoteInput:{service,fileCount:docs.length,tier,catalogueRows},variantId,files:stored,status:"AWAITING_PAYMENT",createdAt:new Date().toISOString(),checkoutOrderId:null};
-  await put(prefix+"manifest.json",JSON.stringify(manifest),{access:"private",addRandomSuffix:false,contentType:"application/json",token:process.env.BLOB_READ_WRITE_TOKEN});
+  await put(prefix+"manifest.json",JSON.stringify(manifest),{access:"private",addRandomSuffix:false,contentType:"application/json",...blobOptions});
   }catch(uploadError){
    // Do not retain a partial batch if the manifest or any document fails to save.
-   if(stored.length){try{await del(stored.map(f=>f.pathname),{token:process.env.BLOB_READ_WRITE_TOKEN});}catch(cleanupError){console.error("timeease_intake_cleanup_failed",cleanupError instanceof Error?cleanupError.message:"unknown");}}
+   if(stored.length){try{await del(stored.map(f=>f.pathname),{...blobOptions});}catch(cleanupError){console.error("timeease_intake_cleanup_failed",cleanupError instanceof Error?cleanupError.message:"unknown");}}
    throw uploadError;
   }
   return NextResponse.json({id,quote:storedQuote,status:"AWAITING_PAYMENT",checkoutReady:checkoutIsEnabled()},{status:201,headers:{"Cache-Control":"no-store"}});
