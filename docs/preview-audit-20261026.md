@@ -46,3 +46,9 @@ PDF → Excel, Blob, mail, order E2E remain BLOCKED until these isolation checks
 Read-only store metadata confirms store_2zPRAZaFbo6bhEfz (timeease-v2-secure-storage-20261013) is connected to timeease-v2-secure in production, preview and development. No tokens requested or displayed. A separate existing Preview store has not been identified; no store created.
 
 The authenticated connector retrieved real /api/readiness JSON from 74566c8. Its intakeEnabled=true contradicted the new Preview gate. Readiness now reports intakeEnabled=false and previewBlobAccessBlocked=true in Preview with the inherited token. No connection details or secrets are returned. The database diagnostic endpoint still failed through the connector's protected-deployment path; readiness reachability does not establish diagnostic authorization or native TLS.
+
+## Preview-only existing store connection and OIDC readiness probe
+
+Verified store_FI8APVuc1xuRZkAg (timeease-v2-private-invoices), private, sin1, connected only to project prj_Wx1x2G8gOdvuhZqHd8goSZyvQ077 in preview using prefix TIMEEASE_PREVIEW_BLOB. Only STORE_ID and WEBHOOK_PUBLIC_KEY variables were generated; no static read-write token added. Existing production BLOB_READ_WRITE_TOKEN remains scoped to the original store_2zPRAZaFbo6bhEfz. No secrets read or copied.
+
+Readiness now runs a Preview-only read-only native PostgreSQL transaction (strict URL allowlist, verify-full, actual identity and privilege query, pg_stat_ssl, authorized TLS stream) and a list(limit=1) in a diagnostic Blob namespace using OIDC with explicit Preview storeId. It returns booleans only, no order rows or object names. It never passes the inherited production token. Business Blob handlers remain blocked; this is evidence gathering, not E2E or upload enablement. Production readiness behavior and the existing diagnostic Bearer authentication are unchanged.

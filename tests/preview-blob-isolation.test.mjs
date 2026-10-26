@@ -28,7 +28,7 @@ for(const [path,method] of [['intake','POST'],['checkout','POST'],['webhooks/sho
 
 test('readiness reports Preview intake blocked despite an inherited storage token',async()=>{
  const exports={};
- vm.runInNewContext(compile('app/api/readiness/route.ts'),{exports,process:{env:{VERCEL_ENV:'preview',BLOB_READ_WRITE_TOKEN:'synthetic-only'}},require:name=>name.endsWith('preview-blob-guard')?guard:name==='next/server'?{NextResponse:{json:data=>data}}:name.endsWith('payment-ledger-schema-ready')?{paymentLedgerSchemaReady:async()=>false}:{checkoutIsEnabled:()=>false,checkoutTestPrerequisitesReady:()=>false}});
+ vm.runInNewContext(compile('app/api/readiness/route.ts'),{exports,process:{env:{VERCEL_ENV:'preview',BLOB_READ_WRITE_TOKEN:'synthetic-only'}},require:name=>name.endsWith('preview-blob-guard')?guard:name.endsWith('preview-runtime-evidence')?{previewRuntimeEvidence:async()=>({readOnly:true})}:name==='next/server'?{NextResponse:{json:data=>data}}:name.endsWith('payment-ledger-schema-ready')?{paymentLedgerSchemaReady:async()=>false}:{checkoutIsEnabled:()=>false,checkoutTestPrerequisitesReady:()=>false}});
  const result=await exports.GET();
  assert.equal(result.privateStorageConfigured,true);
  assert.equal(result.intakeEnabled,false);
