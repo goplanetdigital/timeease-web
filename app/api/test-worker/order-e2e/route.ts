@@ -9,7 +9,7 @@ export const runtime='nodejs';
 export const dynamic='force-dynamic';
 const MAX_BODY=1500000;
 const reply=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{'Cache-Control':'no-store'}});
-const ACTIONS=['status','prepare','claim','source','result','delivered','review','cleanup'];
+const ACTIONS=['auth_check','status','prepare','claim','source','result','delivered','review','cleanup'];
 /** Diagnostic only: no DB, Blob, payment or email side effects; POST remains authenticated. */
 export async function GET(req:NextRequest){
  if(!previewOrderEnvironment(process.env,new URL(req.url).hostname))return reply({error:'PREVIEW_TEST_ONLY'},404);
@@ -45,6 +45,17 @@ export async function POST(req:NextRequest){
  catch{return reply({error:'INVALID_BODY'},400);}
  if(!body||typeof body!=='object'||Array.isArray(body)||typeof body.action!=='string'||!ACTIONS.includes(body.action))
   return reply({error:'INVALID_ACTION'},400);
+ // Authentication-only phase: exit before parsing a DB URL, constructing a Pool,
+ // obtaining Blob credentials, querying orders or invoking any Worker transition.
+ if(body.action==='auth_check'){
+  if(Object.keys(body).some(k=>!['action','nonce'].includes(k))||typeof body.nonce!=='string'||
+   !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.nonce))
+   return reply({error:'INVALID_AUTH_PROBE'},400);
+  return reply({authenticated:true,scope:'auth-check-only',environment:env.VERCEL_ENV,
+   branch:env.VERCEL_GIT_COMMIT_REF,commit:env.VERCEL_GIT_COMMIT_SHA,
+   deploymentHost:env.VERCEL_URL,requestNonce:body.nonce,databaseAccessed:false,
+   blobAccessed:false,ordersTouched:false,emailSent:false});
+ }
  const {action}=body,kind=body.case??'delivery';
  if(kind!=='delivery'&&kind!=='failure')return reply({error:'INVALID_FIXTURE'},400);
  const keys=action==='result'?['action','case','xlsxBase64']:action==='delivered'?['action','case','messageId']:['action','case'];
