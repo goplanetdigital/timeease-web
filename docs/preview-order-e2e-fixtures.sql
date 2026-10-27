@@ -12,6 +12,18 @@ BEGIN
   OR current_setting('neon.branch_id',true) IS DISTINCT FROM 'br-rough-butterfly-aox5mukp' THEN
   RAISE EXCEPTION 'PREVIEW_BRANCH_REQUIRED';
  END IF;
+ -- Fail closed if the reviewed per-ID/per-Shopify-reference uniqueness is absent.
+ IF EXISTS (
+  SELECT 1 FROM (VALUES ('intake_id'),('shopify_order_id')) AS expected(column_name)
+  WHERE NOT EXISTS (
+   SELECT 1 FROM pg_constraint c
+   JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attname=expected.column_name
+   WHERE c.conrelid='public.timeease_v2_orders'::regclass
+    AND c.contype IN ('p','u') AND c.conkey=ARRAY[a.attnum]::smallint[]
+  )
+ ) THEN
+  RAISE EXCEPTION 'FIXTURE_UNIQUE_CONSTRAINT_REQUIRED';
+ END IF;
  INSERT INTO public.timeease_v2_orders
   (intake_id,shopify_order_id,shopify_shop_domain,variant_id,amount_usd,customer_email,source_manifest_path,status)
  SELECT id::uuid,'preview-e2e:'||kind||':'||id,'preview.invalid','synthetic-invoice',1,

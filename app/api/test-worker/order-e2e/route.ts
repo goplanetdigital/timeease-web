@@ -5,11 +5,12 @@ import {put,get,head,del,list} from '@vercel/blob';
 import {previewBlobOptions} from '../../../../lib/preview-runtime-evidence';
 import {claimPaidJob,markResultReady,markDelivered,flagForReview} from '../../../../lib/paid-job-claim';
 import {previewOrderEnvironment,fixtureMatches,ORDER_FIXTURES,TEST_RECIPIENT,syntheticInvoicePdf} from '../../../../lib/preview-order-fixture';
+import {recoverPreviewFailure} from '../../../../lib/preview-order-recovery';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 const MAX_BODY=1500000;
 const reply=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{'Cache-Control':'no-store'}});
-const ACTIONS=['auth_check','status','prepare','claim','source','result','delivered','review','cleanup'];
+const ACTIONS=['auth_check','status','prepare','claim','source','result','delivered','review','recover','cleanup'];
 /** Diagnostic only: no DB, Blob, payment or email side effects; POST remains authenticated. */
 export async function GET(req:NextRequest){
  if(!previewOrderEnvironment(process.env,new URL(req.url).hostname))return reply({error:'PREVIEW_TEST_ONLY'},404);
@@ -58,6 +59,7 @@ export async function POST(req:NextRequest){
  }
  const {action}=body,kind=body.case??'delivery';
  if(kind!=='delivery'&&kind!=='failure')return reply({error:'INVALID_FIXTURE'},400);
+ if(action==='recover'&&kind!=='failure')return reply({error:'FAILURE_FIXTURE_REQUIRED'},400);
  const keys=action==='result'?['action','case','xlsxBase64']:action==='delivered'?['action','case','messageId']:['action','case'];
  if(Object.keys(body).some(k=>!keys.includes(k)))return reply({error:'UNEXPECTED_INPUT'},400);
  let workbook:Buffer|undefined;
@@ -136,12 +138,19 @@ export async function POST(req:NextRequest){
    status=ok?200:409;data={delivered:ok,providerReceiptRequiresExternalVerification:true};
   }else if(action==='review'){
    const ok=await flagForReview(id,'SYNTHETIC_E2E_FAILURE_NO_AUTO_RESEND',client);status=ok?200:409;data={reviewRequired:ok};
+  }else if(action==='recover'){
+   const ok=row.status==='PROCESSING'&&await recoverPreviewFailure(id,client);
+   status=ok?200:409;data={recovered:ok,noAutoRetry:true,noEmailSent:true};
   }else if(action==='cleanup'){
-   if(!['DELIVERED','REVIEW_REQUIRED'].includes(row.status)){status=409;data={error:'FINAL_STATE_REQUIRED'};}
+   // A failed/ambiguous prepare can leave objects before claim. Cleanup may also
+   // abort this exact pristine fixture; never clear a PROCESSING order or reset it.
+   const pristine=row.status==='PAID'&&row.processing_attempts===0&&row.processing_started_at===null&&
+    row.result_path===null&&row.delivery_message_id===null;
+   if(!pristine&&!['DELIVERED','REVIEW_REQUIRED'].includes(row.status)){status=409;data={error:'FINAL_OR_PRISTINE_STATE_REQUIRED'};}
    else{
     await del([prefix+'file-001.pdf',prefix+'manifest.json',resultPath],options);
     const remaining=await Promise.all([list({...options,prefix,limit:1}),list({...options,prefix:`results-v2/${id}/`,limit:1})]);
-    const clean=remaining.every(r=>r.blobs.length===0);status=clean?200:503;data={cleanupVerified:clean};
+    const clean=remaining.every(r=>r.blobs.length===0);status=clean?200:503;data={cleanupVerified:clean,abortedBeforeClaim:pristine};
    }
   }
   await client.query('COMMIT');

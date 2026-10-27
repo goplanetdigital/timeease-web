@@ -17,7 +17,7 @@ const row={intake_id:id,shopify_order_id:`preview-e2e:delivery:${id}`,shopify_sh
  variant_id:'synthetic-invoice',amount_usd:1,customer_email:fixture.TEST_RECIPIENT,
  source_manifest_path:`intake-v2/${id}/manifest.json`,status:'PAID',processing_attempts:0,result_path:null,delivery_message_id:null};
 const identity={role:'timeease_worker_limited',database:'neondb',project:'odd-base-63790740',branch:'br-rough-butterfly-aox5mukp',elevated:false,member:false,forbidden_write:false};
-function setup({overrides={},record=row,who=identity,tls=true,blobFailure=false}={}){
+function setup({overrides={},record=row,who=identity,tls=true,blobFailure=false,recoveryReady=false}={}){
  const effects=[],objects=new Map(),configs=[],databaseCalls=[];const exports={};
  const options={storeId:'store_FI8APVuc1xuRZkAg'};
  const client={connection:{stream:{encrypted:tls,authorized:tls,getProtocol:()=>tls?'TLSv1.3':null}},
@@ -37,7 +37,9 @@ function setup({overrides={},record=row,who=identity,tls=true,blobFailure=false}
  vm.runInNewContext(compile('app/api/test-worker/order-e2e/route.ts'),{exports,process:{env:{...env,...overrides}},Buffer,URL,
   require:name=>name==='next/server'?{NextResponse:{json:(data,options)=>({data,...options})}}:name==='node:crypto'?crypto:
    name==='pg'?{Pool}:name==='@vercel/blob'?blobs:name.endsWith('preview-order-fixture')?fixture:
-   name.endsWith('paid-job-claim')?shared:{previewBlobOptions:async()=>options}});
+   name.endsWith('paid-job-claim')?shared:name.endsWith('preview-order-recovery')?{recoverPreviewFailure:async(value,c)=>{
+    assert.equal(value,fixture.ORDER_FIXTURES.failure);assert.equal(c,client);effects.push({op:'scoped_recovery'});return recoveryReady;
+   }}:{previewBlobOptions:async()=>options}});
  const request=(body={action:'status'},headers={},host=env.VERCEL_URL)=>({url:`https://${host}/api/test-worker/order-e2e`,
   headers:new Map([['authorization',`Bearer ${env.TIMEEASE_TEST_WORKER_SECRET}`],['content-type','application/json'],...Object.entries(headers)]),
   body:new ReadableStream({start(c){c.enqueue(Buffer.from(JSON.stringify(body)));c.close();}})});
@@ -119,6 +121,26 @@ test('cleanup requires a final state and is restricted to the fixed synthetic pa
  const done=setup({record:{...row,status:'REVIEW_REQUIRED'}});done.seedBlobs();
  const r=await done.api.POST(done.request({action:'cleanup'}));assert.equal(r.status,200);assert.equal(r.data.cleanupVerified,true);
  assert.deepEqual(Array.from(done.effects[0].paths),[`intake-v2/${id}/file-001.pdf`,`intake-v2/${id}/manifest.json`,`results-v2/${id}/consolidated.xlsx`]);
+});
+test('pristine pre-claim fixture can clean a failed prepare without resetting state or claiming',async()=>{
+ const s=setup({record:{...row,processing_started_at:null}});s.seedBlobs();
+ const r=await s.api.POST(s.request({action:'cleanup'}));assert.equal(r.status,200);assert.equal(r.data.abortedBeforeClaim,true);
+ assert.deepEqual(s.effects.map(e=>e.op),['del']);assert.equal(s.objects.size,0);
+ for(const record of [{...row,status:'PROCESSING',processing_started_at:null},{...row,processing_attempts:1,processing_started_at:null}]){
+  const t=setup({record});assert.equal((await t.api.POST(t.request({action:'cleanup'}))).status,409);assert.equal(t.effects.length,0);
+ }
+});
+test('recovery is failure-fixture-only, uses the locked client and refuses early/terminal cases',async()=>{
+ const d=setup();assert.equal((await d.api.POST(d.request({action:'recover'}))).status,400);assert.equal(d.configs.length,0);
+ const fid=fixture.ORDER_FIXTURES.failure;
+ const record={...row,intake_id:fid,shopify_order_id:`preview-e2e:failure:${fid}`,source_manifest_path:`intake-v2/${fid}/manifest.json`,status:'PROCESSING'};
+ for(const recoveryReady of [false,true]){
+  const s=setup({record,recoveryReady});const r=await s.api.POST(s.request({action:'recover',case:'failure'}));
+  assert.equal(r.status,recoveryReady?200:409);assert.equal(r.data.recovered,recoveryReady);
+  assert.deepEqual(s.effects.map(e=>e.op),['scoped_recovery']);
+ }
+ const s=setup({record:{...record,status:'REVIEW_REQUIRED'},recoveryReady:true});
+ assert.equal((await s.api.POST(s.request({action:'recover',case:'failure'}))).status,409);assert.equal(s.effects.length,0);
 });
 test('provider errors do not expose raw provider messages, tokens or credentials',async()=>{
  const s=setup({blobFailure:true});const r=await s.api.POST(s.request({action:'prepare'}));assert.equal(r.status,503);
