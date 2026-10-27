@@ -1,3 +1,5 @@
+import {blobAccessConfigured,blobAccessOptions} from "../../../../lib/blob-access";
+import {previewBlobAccessBlocked} from "../../../../lib/preview-blob-guard";
 import {createHash,timingSafeEqual} from "node:crypto";
 import {NextRequest,NextResponse} from "next/server";
 import {markResultReady,markDelivered,flagForReview} from "../../../../lib/paid-job-claim";
@@ -14,6 +16,7 @@ function authorized(req:NextRequest,secret:string){
 }
 /** Worker reports only durable, independently produced outputs; no user-facing invocation. */
 export async function POST(req:NextRequest){
+ if(previewBlobAccessBlocked(process.env))return NextResponse.json({error:"PREVIEW_BLOB_ISOLATION_REQUIRED"},{status:503,headers:{"Cache-Control":"no-store"}});
  const secret=process.env.TIMEEASE_V2_WORKER_SECRET;
  if(!secret||secret.length<32||process.env.TIMEEASE_V2_PAYMENT_LEDGER_ENABLED!=="true")
   return reply({error:"WORKER_NOT_CONFIGURED"},503);
@@ -44,10 +47,10 @@ export async function POST(req:NextRequest){
   if(b.action==="result_ready"&&typeof b.resultPath==="string"){
    if(b.resultPath!=="results-v2/"+b.intakeId+"/consolidated.xlsx")
     return reply({error:"INVALID_RESULT_PATH"},400);
-   const token=process.env.BLOB_READ_WRITE_TOKEN;
-   if(!token)return reply({error:"STORAGE_NOT_CONFIGURED"},503);
+   const storageConfigured=blobAccessConfigured(process.env);
+   if(!storageConfigured)return reply({error:"STORAGE_NOT_CONFIGURED"},503);
    let blob;
-   try{blob=await head(b.resultPath,{token})}
+   try{blob=await head(b.resultPath,await blobAccessOptions(process.env))}
    catch{return reply({error:"RESULT_NOT_STORED"},409)}
    if(!blob||blob.size<=0||blob.size>20*1024*1024||
       blob.contentType!=="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

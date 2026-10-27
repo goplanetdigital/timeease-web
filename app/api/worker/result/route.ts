@@ -1,3 +1,5 @@
+import {blobAccessConfigured,blobAccessOptions} from "../../../../lib/blob-access";
+import {previewBlobAccessBlocked} from "../../../../lib/preview-blob-guard";
 import {createHash,timingSafeEqual} from "node:crypto";
 import {NextRequest,NextResponse} from "next/server";
 import {put} from "@vercel/blob";
@@ -9,10 +11,11 @@ let pool:Pool|undefined;
 const respond=(body:unknown,status:number)=>NextResponse.json(body,{status,headers:{"Cache-Control":"no-store"}});
 /** Worker-only result upload. Caller must claim a paid order before storing output. */
 export async function POST(req:NextRequest){
+ if(previewBlobAccessBlocked(process.env))return NextResponse.json({error:"PREVIEW_BLOB_ISOLATION_REQUIRED"},{status:503,headers:{"Cache-Control":"no-store"}});
  const secret=process.env.TIMEEASE_V2_WORKER_SECRET;
  const dbUrl=process.env.TIMEEASE_DB_DATABASE_URL;
- const token=process.env.BLOB_READ_WRITE_TOKEN;
- if(!secret||secret.length<32||!dbUrl||!token||process.env.TIMEEASE_V2_PAYMENT_LEDGER_ENABLED!=="true")
+ const storageConfigured=blobAccessConfigured(process.env);
+ if(!secret||secret.length<32||!dbUrl||!storageConfigured||process.env.TIMEEASE_V2_PAYMENT_LEDGER_ENABLED!=="true")
   return respond({error:"WORKER_NOT_CONFIGURED"},503);
  const auth=req.headers.get("authorization")||"";
  if(!auth.startsWith("Bearer ")||auth.length>519)return respond({error:"UNAUTHORIZED"},401);
@@ -27,6 +30,7 @@ export async function POST(req:NextRequest){
  if(contentType!=="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
   return respond({error:"INVALID_RESULT_TYPE"},415);
  try{
+  const blobOptions=await blobAccessOptions(process.env);
   pool??=new Pool({connectionString:dbUrl,max:3,connectionTimeoutMillis:5000});
   const rows=await pool.query("SELECT intake_id FROM timeease_v2_orders WHERE intake_id=$1 AND status='PROCESSING' AND result_path IS NULL",[intakeId]);
   if(rows.rowCount!==1)return respond({error:"JOB_NOT_READY_FOR_RESULT"},409);
@@ -46,7 +50,7 @@ export async function POST(req:NextRequest){
      bytes.subarray(0,2).toString("hex")!=="504b")
    return respond({error:"INVALID_XLSX_BYTES"},422);
   const pathname="results-v2/"+intakeId+"/consolidated.xlsx";
-  await put(pathname,bytes,{access:"private",token,contentType,addRandomSuffix:false,allowOverwrite:false});
+  await put(pathname,bytes,{access:"private",...blobOptions,contentType,addRandomSuffix:false,allowOverwrite:false});
   return respond({ok:true,resultPath:pathname,bytes:bytes.length},201);
  }catch{return respond({error:"RESULT_UPLOAD_UNAVAILABLE"},503)}
 }

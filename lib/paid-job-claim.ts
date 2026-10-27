@@ -12,8 +12,8 @@ export type PaidJob={
  source_manifest_path:string;processing_attempts:number;
 };
 /** Claim one paid order atomically. Never run a job without a returned row. */
-export async function claimPaidJob(intakeId:string):Promise<PaidJob|null>{
- const result=await db().query<PaidJob>(`UPDATE timeease_v2_orders
+export async function claimPaidJob(intakeId:string,client?:Pick<Pool,'query'>):Promise<PaidJob|null>{
+ const result=await (client??db()).query<PaidJob>(`UPDATE timeease_v2_orders
  SET status='PROCESSING',processing_started_at=now(),
  processing_attempts=processing_attempts+1
  WHERE intake_id=$1 AND status='PAID'
@@ -22,27 +22,27 @@ export async function claimPaidJob(intakeId:string):Promise<PaidJob|null>{
  amount_usd,customer_email,source_manifest_path,processing_attempts`,[intakeId]);
  return result.rowCount===1?result.rows[0]:null;
 }
-export async function markResultReady(intakeId:string,resultPath:string):Promise<boolean>{
+export async function markResultReady(intakeId:string,resultPath:string,client?:Pick<Pool,'query'>):Promise<boolean>{
  if(!resultPath.startsWith("results-v2/"+intakeId+"/")||resultPath.includes(".."))throw new Error("INVALID_RESULT_PATH");
- const result=await db().query(`UPDATE timeease_v2_orders SET result_path=$2
+ const result=await (client??db()).query(`UPDATE timeease_v2_orders SET result_path=$2
  WHERE intake_id=$1 AND status='PROCESSING' AND result_path IS NULL
  RETURNING intake_id`,[intakeId,resultPath]);
  return result.rowCount===1;
 }
 
 /** Finalize only after a durable result exists and the delivery provider confirms success. */
-export async function markDelivered(intakeId:string,messageId:string):Promise<boolean>{
+export async function markDelivered(intakeId:string,messageId:string,client?:Pick<Pool,'query'>):Promise<boolean>{
  if(!messageId||messageId.length>255)throw new Error("INVALID_DELIVERY_RECEIPT");
- const result=await db().query(`UPDATE timeease_v2_orders
+ const result=await (client??db()).query(`UPDATE timeease_v2_orders
  SET status='DELIVERED',delivery_message_id=$2,delivered_at=now(),last_error=NULL
  WHERE intake_id=$1 AND status='PROCESSING' AND result_path IS NOT NULL
  AND delivery_message_id IS NULL RETURNING intake_id`,[intakeId,messageId]);
  return result.rowCount===1;
 }
 /** Fail closed; do not automatically resend potentially delivered messages. */
-export async function flagForReview(intakeId:string,reason:string):Promise<boolean>{
+export async function flagForReview(intakeId:string,reason:string,client?:Pick<Pool,'query'>):Promise<boolean>{
  if(!reason||reason.length>1000)throw new Error("INVALID_REVIEW_REASON");
- const result=await db().query(`UPDATE timeease_v2_orders
+ const result=await (client??db()).query(`UPDATE timeease_v2_orders
  SET status='REVIEW_REQUIRED',last_error=$2
  WHERE intake_id=$1 AND status='PROCESSING' RETURNING intake_id`,[intakeId,reason]);
  return result.rowCount===1;

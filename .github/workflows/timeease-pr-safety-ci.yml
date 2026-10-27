@@ -22,6 +22,8 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Preview identity security tests
+        run: node --test tests/preview-identity.test.mjs tests/preview-blob-isolation.test.mjs tests/preview-runtime-evidence.test.mjs tests/preview-order-e2e.test.mjs tests/preview-auth-channel.test.mjs tests/preview-order-console.test.mjs
       - name: Typecheck
         run: npx tsc --noEmit
       - name: Production build

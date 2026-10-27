@@ -1,3 +1,5 @@
+import {blobAccessConfigured,blobAccessOptions} from "../../../../lib/blob-access";
+import {previewBlobAccessBlocked} from "../../../../lib/preview-blob-guard";
 import {createHmac,timingSafeEqual} from "node:crypto";
 import {NextRequest,NextResponse} from "next/server";
 import {verifyBoundShopifyOrder} from "../../../../lib/shopify-bound-order";
@@ -16,6 +18,7 @@ function authenticated(raw:string,signature:string|null,secret:string):boolean {
 // Isolated, fail-closed verification endpoint. It deliberately does NOT mark
 // an intake paid, start a worker, or accept a client-provided order status.
 export async function POST(req:NextRequest){
+ if(previewBlobAccessBlocked(process.env))return NextResponse.json({error:"PREVIEW_BLOB_ISOLATION_REQUIRED"},{status:503,headers:{"Cache-Control":"no-store"}});
  const secret=process.env.SHOPIFY_WEBHOOK_SECRET;
  if(!secret)return NextResponse.json({error:"WEBHOOK_NOT_CONFIGURED"},{status:503});
  const length=req.headers.get("content-length");
@@ -56,9 +59,9 @@ export async function POST(req:NextRequest){
  if(!bindingSecret)return NextResponse.json({error:"CHECKOUT_BINDING_NOT_CONFIGURED"},{status:503});
  const binding=verifyBoundShopifyOrder(order as Parameters<typeof verifyBoundShopifyOrder>[0],bindingSecret);
  if(!binding)return NextResponse.json({error:"INVALID_ORDER_INTAKE_BINDING"},{status:422});
- const storageToken=process.env.BLOB_READ_WRITE_TOKEN;
- if(!storageToken)return NextResponse.json({error:"STORAGE_NOT_CONFIGURED"},{status:503});
- if(!await verifyStoredIntake(binding,storageToken))return NextResponse.json({error:"BOUND_INTAKE_MISMATCH"},{status:422});
+ const storageConfigured=blobAccessConfigured(process.env);
+ if(!storageConfigured)return NextResponse.json({error:"STORAGE_NOT_CONFIGURED"},{status:503});
+ if(!await verifyStoredIntake(binding,await blobAccessOptions(process.env)))return NextResponse.json({error:"BOUND_INTAKE_MISMATCH"},{status:422});
  if(process.env.TIMEEASE_V2_PAYMENT_LEDGER_ENABLED!=="true")
   return NextResponse.json({error:"PAID_ORDER_LINKING_NOT_ENABLED"},{status:503});
  try{
