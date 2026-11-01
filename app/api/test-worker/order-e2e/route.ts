@@ -92,7 +92,7 @@ export async function POST(req:NextRequest){
    has_table_privilege(current_user,'public.timeease_v2_orders','INSERT') OR has_table_privilege(current_user,'public.timeease_v2_orders','DELETE') OR has_table_privilege(current_user,'public.timeease_v2_orders','TRUNCATE') AS forbidden_write`);
   const who=identity.rows[0];
   if(who?.role!=='timeease_worker_limited'||who?.database!=='neondb'||who?.project!=='odd-base-63790740'||
-   who?.branch!=='br-rough-butterfly-aox5mukp'||who?.elevated!==false||who?.member!==false||who?.forbidden_write!==false)
+   who?.branch!=='br-restless-hill-ao5vpgb4'||who?.elevated!==false||who?.member!==false||who?.forbidden_write!==false)
    throw Error('ISOLATION_REQUIRED');
   const id=ORDER_FIXTURES[kind],prefix=`intake-v2/${id}/`,resultPath=`results-v2/${id}/consolidated.xlsx`;
   const result=await client.query('SELECT * FROM public.timeease_v2_orders WHERE intake_id=$1 FOR UPDATE',[id]);
