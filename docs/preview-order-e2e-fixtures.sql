@@ -1,7 +1,7 @@
 -- REVIEWABLE FIXTURE ONLY. NOT a migration; never run during build.
 -- Run only after an authorized Preview POST transport is available.
--- Neon Console: timeease-db > branch timeease-v2-launch-validation-20261017
--- (br-rough-butterfly-aox5mukp) > SQL Editor > neondb.
+-- Neon Console: timeease-db > schema-only branch br-restless-hill-ao5vpgb4 > SQL Editor > neondb.
+-- Refuses Production main and the retired branch br-rough-butterfly-aox5mukp.
 -- Use an existing authorized operator role, not the application/Worker role.
 -- No CREATE ROLE, GRANT, password change, real payment or Shopify call.
 BEGIN;
@@ -9,7 +9,7 @@ DO $$
 BEGIN
  IF current_database() IS DISTINCT FROM 'neondb'
   OR current_setting('neon.project_id',true) IS DISTINCT FROM 'odd-base-63790740'
-  OR current_setting('neon.branch_id',true) IS DISTINCT FROM 'br-rough-butterfly-aox5mukp' THEN
+  OR current_setting('neon.branch_id',true) IS DISTINCT FROM 'br-restless-hill-ao5vpgb4' THEN
   RAISE EXCEPTION 'PREVIEW_BRANCH_REQUIRED';
  END IF;
  -- Fail closed if the reviewed per-ID/per-Shopify-reference uniqueness is absent.

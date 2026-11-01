@@ -1,9 +1,8 @@
 import {Pool} from 'pg';
 import {list} from '@vercel/blob';
 import {getVercelOidcToken} from '@vercel/oidc';
-import {isIsolatedPreview} from './test-worker-guards';
+import {isIsolatedPreview,isIsolatedNeonEndpoint,PREVIEW_NEON_BRANCH,PREVIEW_NEON_PROJECT} from './test-worker-guards';
 export const PREVIEW_BLOB_STORE='store_FI8APVuc1xuRZkAg';
-const PREVIEW_HOST='ep-summer-salad-aoeax66z.c-2.ap-southeast-1.aws.neon.tech';
 /** Never supplies the inherited production read-write token in Preview. */
 export async function previewBlobOptions(env:Record<string,string|undefined>){
  if(!isIsolatedPreview(env)||env.TIMEEASE_PREVIEW_BLOB_STORE_ID!==PREVIEW_BLOB_STORE)
@@ -21,7 +20,7 @@ export async function previewRuntimeEvidence(env:Record<string,string|undefined>
   (async()=>{
    let url:URL;
    try{url=new URL(env.TIMEEASE_DB_DATABASE_URL||'');}catch{evidence.database.status='URL_INVALID';return;}
-   if(!['postgres:','postgresql:'].includes(url.protocol)||url.hostname!==PREVIEW_HOST||url.username!=='timeease_worker_limited'||url.pathname!=='/neondb'){evidence.database.status='URL_IDENTITY_MISMATCH';return;}
+   if(!['postgres:','postgresql:'].includes(url.protocol)||!isIsolatedNeonEndpoint(url.hostname)||url.username!=='timeease_worker_limited'||url.pathname!=='/neondb'){evidence.database.status='URL_IDENTITY_MISMATCH';return;}
    url.searchParams.set('sslmode','verify-full');
    const pool=new Pool({connectionString:url.toString(),max:1,connectionTimeoutMillis:4000,statement_timeout:4000,query_timeout:5000});
    try{
@@ -38,7 +37,7 @@ export async function previewRuntimeEvidence(env:Record<string,string|undefined>
       has_table_privilege(current_user,'public.timeease_v2_orders','INSERT') OR has_table_privilege(current_user,'public.timeease_v2_orders','DELETE') OR has_table_privilege(current_user,'public.timeease_v2_orders','TRUNCATE') AS forbidden_write`);
      const row=result.rows[0];
      evidence.database.queryVerified=Boolean(row);
-     evidence.database.identityVerified=row?.role==='timeease_worker_limited'&&row?.database==='neondb'&&row?.project_id==='odd-base-63790740'&&row?.branch_id==='br-rough-butterfly-aox5mukp';
+     evidence.database.identityVerified=row?.role==='timeease_worker_limited'&&row?.database==='neondb'&&row?.project_id===PREVIEW_NEON_PROJECT&&row?.branch_id===PREVIEW_NEON_BRANCH;
      evidence.database.leastPrivilegeVerified=row?.elevated===false&&row?.neon_superuser_member===false&&row?.can_select===true&&row?.forbidden_write===false;
      evidence.database.readOnlyTransaction=row?.read_only===true;
      // pg_stat_ssl describes the PostgreSQL backend connection, which may be

@@ -11,12 +11,12 @@ const env={VERCEL_ENV:'preview',VERCEL_URL:'preview.example.vercel.app',VERCEL_G
  VERCEL_GIT_COMMIT_SHA:'synthetic-unit-commit',TIMEEASE_ISOLATED_TEST_MODE:'true',TIMEEASE_V2_CHECKOUT_ENABLED:'false',
  TIMEEASE_V2_PAYMENT_LEDGER_ENABLED:'false',TIMEEASE_TEST_ALLOWED_RECIPIENT:fixture.TEST_RECIPIENT,
  TIMEEASE_TEST_WORKER_SECRET:'synthetic-unit-test-secret-not-for-live-use',BLOB_READ_WRITE_TOKEN:'inherited-token-must-never-be-used',
- TIMEEASE_DB_DATABASE_URL:'postgresql://timeease_worker_limited:synthetic@ep-summer-salad-aoeax66z.c-2.ap-southeast-1.aws.neon.tech/neondb'};
+ TIMEEASE_DB_DATABASE_URL:'postgresql://timeease_worker_limited:synthetic@ep-restless-hill-ao5vpgb4.c-2.ap-southeast-1.aws.neon.tech/neondb'};
 const id=fixture.ORDER_FIXTURES.delivery;
 const row={intake_id:id,shopify_order_id:`preview-e2e:delivery:${id}`,shopify_shop_domain:'preview.invalid',
  variant_id:'synthetic-invoice',amount_usd:1,customer_email:fixture.TEST_RECIPIENT,
  source_manifest_path:`intake-v2/${id}/manifest.json`,status:'PAID',processing_attempts:0,result_path:null,delivery_message_id:null};
-const identity={role:'timeease_worker_limited',database:'neondb',project:'odd-base-63790740',branch:'br-rough-butterfly-aox5mukp',elevated:false,member:false,forbidden_write:false};
+const identity={role:'timeease_worker_limited',database:'neondb',project:'odd-base-63790740',branch:'br-restless-hill-ao5vpgb4',elevated:false,member:false,forbidden_write:false};
 function setup({overrides={},record=row,who=identity,tls=true,blobFailure=false,recoveryReady=false}={}){
  const effects=[],objects=new Map(),configs=[],databaseCalls=[];const exports={};
  const options={storeId:'store_FI8APVuc1xuRZkAg'};
@@ -37,7 +37,7 @@ function setup({overrides={},record=row,who=identity,tls=true,blobFailure=false,
  vm.runInNewContext(compile('app/api/test-worker/order-e2e/route.ts'),{exports,process:{env:{...env,...overrides}},Buffer,URL,
   require:name=>name==='next/server'?{NextResponse:{json:(data,options)=>({data,...options})}}:name==='node:crypto'?crypto:
    name==='pg'?{Pool}:name==='@vercel/blob'?blobs:name.endsWith('preview-order-fixture')?fixture:
-   name.endsWith('paid-job-claim')?shared:name.endsWith('preview-order-recovery')?{recoverPreviewFailure:async(value,c)=>{
+   name.endsWith('test-worker-guards')?guards:name.endsWith('paid-job-claim')?shared:name.endsWith('preview-order-recovery')?{recoverPreviewFailure:async(value,c)=>{
     assert.equal(value,fixture.ORDER_FIXTURES.failure);assert.equal(c,client);effects.push({op:'scoped_recovery'});return recoveryReady;
    }}:{previewBlobOptions:async()=>options}});
  const request=(body={action:'status'},headers={},host=env.VERCEL_URL)=>({url:`https://${host}/api/test-worker/order-e2e`,
@@ -72,7 +72,7 @@ test('caller cannot supply an order, Blob path, customer email or unexpected fie
  const s=setup();assert.equal((await s.api.POST(s.request({action:'status',case:'1033'}))).status,400);
 });
 test('wrong database URL is rejected before opening a connection',async()=>{
- for(const url of ['invalid','postgresql://neondb_owner:synthetic@production.example/neondb']){
+ for(const url of ['invalid','postgresql://neondb_owner:synthetic@production.example/neondb','postgresql://timeease_worker_limited:synthetic@ep-summer-salad-aoeax66z.c-2.ap-southeast-1.aws.neon.tech/neondb']){
   const s=setup({overrides:{TIMEEASE_DB_DATABASE_URL:url}});assert.equal((await s.api.POST(s.request())).status,503);assert.equal(s.configs.length,0);
  }
 });

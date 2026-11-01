@@ -1,10 +1,9 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {Pool} from 'pg';
 import {createHash,timingSafeEqual} from 'node:crypto';
-import {isIsolatedPreview} from '../../../../lib/test-worker-guards';
+import {isIsolatedPreview,isIsolatedNeonEndpoint,PREVIEW_NEON_BRANCH,PREVIEW_NEON_PROJECT} from '../../../../lib/test-worker-guards';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
-const EXPECTED_HOST='ep-summer-salad-aoeax66z.c-2.ap-southeast-1.aws.neon.tech';
 function respond(error:string,status:number){return NextResponse.json({error},{status,headers:{'Cache-Control':'no-store'}});}
 export async function GET(request:NextRequest){
  if(!isIsolatedPreview(process.env)) return respond('ISOLATION_REQUIRED',503);
@@ -21,7 +20,7 @@ export async function GET(request:NextRequest){
  try{url=new URL(raw);}catch{return respond('TEST_DATABASE_INVALID',503);}
  if(url.protocol!=='postgres:'&&url.protocol!=='postgresql:')return respond('TEST_DATABASE_INVALID',503);
  // Fail closed before opening any connection to a non-Preview endpoint.
- if(url.hostname!==EXPECTED_HOST)return respond('TEST_ENDPOINT_MISMATCH',503);
+ if(!isIsolatedNeonEndpoint(url.hostname))return respond('TEST_ENDPOINT_MISMATCH',503);
  if(url.username!=='timeease_worker_limited'||url.pathname!=='/neondb')return respond('TEST_CONNECTION_IDENTITY_MISMATCH',503);
  url.searchParams.set('sslmode','verify-full');
  const pool=new Pool({connectionString:url.toString(),max:1,connectionTimeoutMillis:4000});
@@ -42,7 +41,7 @@ export async function GET(request:NextRequest){
      has_table_privilege(current_user,'public.timeease_v2_orders','TRUNCATE') AS forbidden_write`);
    const row=result.rows[0];
    if(row?.role!=='timeease_worker_limited'||row?.database!=='neondb')return respond('TEST_ROLE_MISMATCH',503);
-   if(row?.branch_id!=='br-rough-butterfly-aox5mukp'||row?.project_id!=='odd-base-63790740')return respond('TEST_BRANCH_MISMATCH',503);
+   if(row?.branch_id!==PREVIEW_NEON_BRANCH||row?.project_id!==PREVIEW_NEON_PROJECT)return respond('TEST_BRANCH_MISMATCH',503);
    if(row?.elevated!==false||row?.neon_superuser_member!==false||row?.forbidden_write!==false||row?.can_select!==true)return respond('TEST_LEAST_PRIVILEGE_REQUIRED',503);
    const stream=client.connection.stream as unknown as {authorized?:boolean;encrypted?:boolean;getProtocol?:()=>string|null};
    const tlsVersion=stream.getProtocol?.()||'';
@@ -51,7 +50,7 @@ export async function GET(request:NextRequest){
    return NextResponse.json({connected:true,database:row.database,role:row.role,
     leastPrivilege:{elevated:false,neonSuperuserMember:false,forbiddenWrite:false,canSelect:true},
     tls:{active:true,version:tlsVersion,certificateVerified:true,mode:'verify-full',scope:'client-to-neon',postgresBackendTlsReported:row.tls_active===true},
-    neon:{branch:'br-rough-butterfly-aox5mukp',endpoint:EXPECTED_HOST,endpointMatched:true}},
+    neon:{branch:PREVIEW_NEON_BRANCH,endpoint:url.hostname,endpointMatched:true}},
     {headers:{'Cache-Control':'no-store'}});
   }finally{client.release();}
  }catch{return respond('TEST_DATABASE_UNAVAILABLE',503);}

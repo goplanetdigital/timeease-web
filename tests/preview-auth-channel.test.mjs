@@ -18,7 +18,7 @@ function setup(overrides={},upstream){
  const deny=()=>{external++;throw Error('Forbidden external operation');};
  vm.runInNewContext(compile('app/api/test-worker/order-e2e/route.ts'),{exports:worker,process:{env:options},URL,Buffer,
   require:name=>name==='next/server'?next:name==='node:crypto'?crypto:name==='pg'?{Pool:class{constructor(){deny();}}}:
-   name==='@vercel/blob'?{get:deny,put:deny,head:deny,del:deny,list:deny}:name.endsWith('preview-order-fixture')?fixtures:
+   name==='@vercel/blob'?{get:deny,put:deny,head:deny,del:deny,list:deny}:name.endsWith('test-worker-guards')?guards:name.endsWith('preview-order-fixture')?fixtures:
    name.endsWith('paid-job-claim')?{claimPaidJob:deny,markResultReady:deny,markDelivered:deny,flagForReview:deny}:{previewBlobOptions:deny}});
  vm.runInNewContext(compile('app/api/preview-worker-auth-check/route.ts'),{exports:controller,process:{env:options},URL,URLSearchParams,Buffer,
   require:name=>name==='next/server'?next:name.endsWith('preview-order-fixture')?fixtures:{POST:async req=>{

@@ -4,8 +4,8 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
 const compile=path=>ts.transpileModule(readFileSync(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
-const env={VERCEL_ENV:'preview',TIMEEASE_ISOLATED_TEST_MODE:'true',TIMEEASE_V2_CHECKOUT_ENABLED:'false',TIMEEASE_V2_PAYMENT_LEDGER_ENABLED:'false',TIMEEASE_PREVIEW_BLOB_STORE_ID:'store_FI8APVuc1xuRZkAg',VERCEL_OIDC_TOKEN:'synthetic-oidc',BLOB_READ_WRITE_TOKEN:'synthetic-inherited-production',TIMEEASE_DB_DATABASE_URL:'postgresql://timeease_worker_limited:synthetic@ep-summer-salad-aoeax66z.c-2.ap-southeast-1.aws.neon.tech/neondb'};
-const safe={role:'timeease_worker_limited',database:'neondb',project_id:'odd-base-63790740',branch_id:'br-rough-butterfly-aox5mukp',read_only:true,tls_active:true,elevated:false,neon_superuser_member:false,can_select:true,forbidden_write:false};
+const env={VERCEL_ENV:'preview',TIMEEASE_ISOLATED_TEST_MODE:'true',TIMEEASE_V2_CHECKOUT_ENABLED:'false',TIMEEASE_V2_PAYMENT_LEDGER_ENABLED:'false',TIMEEASE_PREVIEW_BLOB_STORE_ID:'store_FI8APVuc1xuRZkAg',VERCEL_OIDC_TOKEN:'synthetic-oidc',BLOB_READ_WRITE_TOKEN:'synthetic-inherited-production',TIMEEASE_DB_DATABASE_URL:'postgresql://timeease_worker_limited:synthetic@ep-restless-hill-ao5vpgb4.c-2.ap-southeast-1.aws.neon.tech/neondb'};
+const safe={role:'timeease_worker_limited',database:'neondb',project_id:'odd-base-63790740',branch_id:'br-restless-hill-ao5vpgb4',read_only:true,tls_active:true,elevated:false,neon_superuser_member:false,can_select:true,forbidden_write:false};
 async function run(overrides={},row=safe,cert=true,listFails=false,contextOidc=false,encrypted=true){
  const queries=[],lists=[],configs=[];
  class Pool{constructor(config){configs.push(config);}async connect(){return {query:async sql=>{queries.push(sql);return {rows:[row]};},connection:{stream:{authorized:cert,encrypted,getProtocol:()=>encrypted?'TLSv1.3':null}},release(){}};}async end(){}}
@@ -36,6 +36,7 @@ test('missing OIDC or wrong store never falls back to shared read-write token',a
 });
 test('runtime evidence rejects wrong URL before connecting and reports actual identity/TLS failures',async()=>{
  const bad=await run({TIMEEASE_DB_DATABASE_URL:'postgresql://owner:synthetic@production.example/neondb'});assert.equal(bad.configs.length,0);
+ const retired=await run({TIMEEASE_DB_DATABASE_URL:'postgresql://timeease_worker_limited:synthetic@ep-summer-salad-aoeax66z.c-2.ap-southeast-1.aws.neon.tech/neondb'});assert.equal(retired.configs.length,0);assert.equal(retired.result.database.status,'URL_IDENTITY_MISMATCH');
  assert.equal((await run({},safe,false)).result.database.tlsCertificateVerified,false);
  assert.equal((await run({},{...safe,branch_id:'wrong'})).result.database.identityVerified,false);
  assert.equal((await run({},{...safe,elevated:true})).result.database.leastPrivilegeVerified,false);

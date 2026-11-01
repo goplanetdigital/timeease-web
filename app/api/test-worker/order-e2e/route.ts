@@ -5,6 +5,7 @@ import {put,get,head,del,list} from '@vercel/blob';
 import {previewBlobOptions} from '../../../../lib/preview-runtime-evidence';
 import {claimPaidJob,markResultReady,markDelivered,flagForReview} from '../../../../lib/paid-job-claim';
 import {previewOrderEnvironment,fixtureMatches,ORDER_FIXTURES,TEST_RECIPIENT,syntheticInvoicePdf} from '../../../../lib/preview-order-fixture';
+import {isIsolatedNeonEndpoint,PREVIEW_NEON_BRANCH,PREVIEW_NEON_PROJECT} from '../../../../lib/test-worker-guards';
 import {recoverPreviewFailure} from '../../../../lib/preview-order-recovery';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -73,7 +74,7 @@ export async function POST(req:NextRequest){
   return reply({error:'INVALID_TEST_GMAIL_RECEIPT'},400);
  let url:URL;
  try{url=new URL(env.TIMEEASE_DB_DATABASE_URL||'');}catch{return reply({error:'TEST_DATABASE_INVALID'},503);}
- if(!['postgres:','postgresql:'].includes(url.protocol)||url.hostname!=='ep-summer-salad-aoeax66z.c-2.ap-southeast-1.aws.neon.tech'||
+ if(!['postgres:','postgresql:'].includes(url.protocol)||!isIsolatedNeonEndpoint(url.hostname)||
   url.username!=='timeease_worker_limited'||url.pathname!=='/neondb')return reply({error:'TEST_DATABASE_IDENTITY_REQUIRED'},503);
  url.searchParams.set('sslmode','verify-full');
  const pool=new Pool({connectionString:url.toString(),max:1,connectionTimeoutMillis:4000,statement_timeout:5000});
@@ -91,8 +92,8 @@ export async function POST(req:NextRequest){
    pg_has_role(current_user,'neon_superuser','MEMBER') AS member,
    has_table_privilege(current_user,'public.timeease_v2_orders','INSERT') OR has_table_privilege(current_user,'public.timeease_v2_orders','DELETE') OR has_table_privilege(current_user,'public.timeease_v2_orders','TRUNCATE') AS forbidden_write`);
   const who=identity.rows[0];
-  if(who?.role!=='timeease_worker_limited'||who?.database!=='neondb'||who?.project!=='odd-base-63790740'||
-   who?.branch!=='br-restless-hill-ao5vpgb4'||who?.elevated!==false||who?.member!==false||who?.forbidden_write!==false)
+  if(who?.role!=='timeease_worker_limited'||who?.database!=='neondb'||who?.project!==PREVIEW_NEON_PROJECT||
+   who?.branch!==PREVIEW_NEON_BRANCH||who?.elevated!==false||who?.member!==false||who?.forbidden_write!==false)
    throw Error('ISOLATION_REQUIRED');
   const id=ORDER_FIXTURES[kind],prefix=`intake-v2/${id}/`,resultPath=`results-v2/${id}/consolidated.xlsx`;
   const result=await client.query('SELECT * FROM public.timeease_v2_orders WHERE intake_id=$1 FOR UPDATE',[id]);

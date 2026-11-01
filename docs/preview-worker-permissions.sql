@@ -7,7 +7,7 @@ BEGIN
   IF current_setting('neon.project_id', true)
        IS DISTINCT FROM 'odd-base-63790740'
      OR current_setting('neon.branch_id', true)
-       IS DISTINCT FROM 'br-rough-butterfly-aox5mukp'
+       IS DISTINCT FROM 'br-restless-hill-ao5vpgb4'
      OR current_database() <> 'neondb' THEN
     RAISE EXCEPTION 'STOP: Preview identity mismatch';
   END IF;
