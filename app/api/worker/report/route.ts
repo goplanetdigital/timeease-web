@@ -2,7 +2,7 @@ import {blobAccessConfigured,blobAccessOptions} from "../../../../lib/blob-acces
 import {previewBlobAccessBlocked} from "../../../../lib/preview-blob-guard";
 import {createHash,timingSafeEqual} from "node:crypto";
 import {NextRequest,NextResponse} from "next/server";
-import {markResultReady,markDelivered,flagForReview} from "../../../../lib/paid-job-claim";
+import {markResultReady,completeReservedDelivery,reserveDelivery,flagForReview} from "../../../../lib/paid-job-claim";
 import {head} from "@vercel/blob";
 export const runtime="nodejs";
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -58,14 +58,25 @@ export async function POST(req:NextRequest){
    const ok=await markResultReady(b.intakeId,b.resultPath);
    return reply({ok},ok?200:409);
   }
+  if(b.action==="reserve_delivery"){
+   const reservation=await reserveDelivery(b.intakeId);
+   if(reservation==="NOT_RESERVABLE")return reply({ok:false,reservation,send:false},409);
+   return reply({ok:true,reservation,send:reservation==="RESERVED"},200);
+  }
   if(b.action==="delivered"&&typeof b.messageId==="string"){
-   const ok=await markDelivered(b.intakeId,b.messageId);
-   return reply({ok},ok?200:409);
+   if(!/^[a-f0-9]{10,64}$/i.test(b.messageId))return reply({error:"INVALID_DELIVERY_RECEIPT"},400);
+   const state=await completeReservedDelivery(b.intakeId,b.messageId);
+   if(state==="REJECTED")return reply({ok:false},409);
+   return reply({ok:true,idempotent:state==="IDEMPOTENT"},200);
   }
   if(b.action==="review"&&typeof b.reason==="string"){
    const ok=await flagForReview(b.intakeId,b.reason);
    return reply({ok},ok?200:409);
   }
   return reply({error:"INVALID_ACTION"},400);
- }catch{return reply({error:"WORKER_LEDGER_UNAVAILABLE"},503)}
+ }catch(error){
+  if(error instanceof Error&&(error.message==="INVALID_DELIVERY_RECEIPT"||error.message==="INVALID_RESULT_PATH"))
+   return reply({error:error.message},400);
+  return reply({error:"WORKER_LEDGER_UNAVAILABLE"},503);
+ }
 }

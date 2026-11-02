@@ -2,7 +2,7 @@ import {blobAccessConfigured} from "../../../lib/blob-access";
 import {previewRuntimeEvidence} from "../../../lib/preview-runtime-evidence";
 import {previewBlobAccessBlocked} from "../../../lib/preview-blob-guard";
 import {NextResponse} from "next/server";
-import {checkoutIsEnabled,checkoutTestPrerequisitesReady} from "../../../lib/checkout-readiness";
+import {checkoutIsEnabled,checkoutTestPrerequisitesReady,productionLaunchBlockers} from "../../../lib/checkout-readiness";
 import {paymentLedgerSchemaReady} from "../../../lib/payment-ledger-schema-ready";
 export const runtime="nodejs";
 export async function GET(){
@@ -16,6 +16,7 @@ export async function GET(){
  const paymentLedgerEnabled=process.env.TIMEEASE_V2_PAYMENT_LEDGER_ENABLED==="true";
  const previewIsolation=process.env.VERCEL_ENV==="preview"?await previewRuntimeEvidence(process.env):undefined;
  const paymentLedgerSchemaVerified=process.env.VERCEL_ENV==="preview"?false:await paymentLedgerSchemaReady();
+ const launchBlockers=productionLaunchBlockers(process.env,paymentLedgerSchemaVerified);
  const checkoutEnabled=checkoutIsEnabled()&&paymentLedgerSchemaVerified;
  return NextResponse.json({
   service:"timeease-upload-first",
@@ -34,6 +35,7 @@ export async function GET(){
   checkoutEnabled,
   paymentWebhookVerified:false,
   workerDeliveryVerified:deliveryVerified,
-  launchReady:false
+  launchBlockers,
+  launchReady:launchBlockers.length===0
  },{headers:{"Cache-Control":"no-store, max-age=0"}});
 }

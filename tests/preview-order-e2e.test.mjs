@@ -152,7 +152,7 @@ test('shared state functions reuse the supplied transaction client without openi
  const client={query:async(sql,args)=>{queries.push({sql,args});return {rowCount:1,rows:[row]};}};
  assert.equal((await api.claimPaidJob(id,client)).intake_id,id);
  assert.equal(await api.markResultReady(id,`results-v2/${id}/consolidated.xlsx`,client),true);
- assert.equal(await api.markDelivered(id,'synthetic-unit-receipt',client),true);
+ assert.equal(await api.markDelivered(id,'1a179272ca7f00df',client),true);
  assert.equal(await api.flagForReview(id,'SYNTHETIC_UNIT_FAILURE',client),true);
  assert.equal(queries.length,4);for(const q of queries)assert.equal(q.args[0],id);
 });

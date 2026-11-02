@@ -22,22 +22,63 @@ export async function claimPaidJob(intakeId:string,client?:Pick<Pool,'query'>):P
  amount_usd,customer_email,source_manifest_path,processing_attempts`,[intakeId]);
  return result.rowCount===1?result.rows[0]:null;
 }
+const GMAIL_RECEIPT=/^[a-f0-9]{10,64}$/i;
+export const DELIVERY_RESERVATION="DELIVERY_RESERVED_NO_AUTO_RESEND";
+function uniqueViolation(error:unknown):boolean{
+ return typeof error==="object"&&error!==null&&"code" in error&&(error as {code?:unknown}).code==="23505";
+}
 export async function markResultReady(intakeId:string,resultPath:string,client?:Pick<Pool,'query'>):Promise<boolean>{
  if(!resultPath.startsWith("results-v2/"+intakeId+"/")||resultPath.includes(".."))throw new Error("INVALID_RESULT_PATH");
- const result=await (client??db()).query(`UPDATE timeease_v2_orders SET result_path=$2
+ const dbc=client??db();
+ const result=await dbc.query(`UPDATE timeease_v2_orders SET result_path=$2
  WHERE intake_id=$1 AND status='PROCESSING' AND result_path IS NULL
  RETURNING intake_id`,[intakeId,resultPath]);
- return result.rowCount===1;
+ if(result.rowCount===1)return true;
+ const existing=await dbc.query<{status:string;result_path:string|null}>(
+  "SELECT status,result_path FROM timeease_v2_orders WHERE intake_id=$1",[intakeId]);
+ const row=existing.rows[0];
+ return !!row&&row.result_path===resultPath&&(row.status==="PROCESSING"||row.status==="DELIVERED");
 }
 
 /** Finalize only after a durable result exists and the delivery provider confirms success. */
 export async function markDelivered(intakeId:string,messageId:string,client?:Pick<Pool,'query'>):Promise<boolean>{
- if(!messageId||messageId.length>255)throw new Error("INVALID_DELIVERY_RECEIPT");
- const result=await (client??db()).query(`UPDATE timeease_v2_orders
+ if(!GMAIL_RECEIPT.test(messageId))throw new Error("INVALID_DELIVERY_RECEIPT");
+ try{
+  const result=await (client??db()).query(`UPDATE timeease_v2_orders
  SET status='DELIVERED',delivery_message_id=$2,delivered_at=now(),last_error=NULL
  WHERE intake_id=$1 AND status='PROCESSING' AND result_path IS NOT NULL
  AND delivery_message_id IS NULL RETURNING intake_id`,[intakeId,messageId]);
- return result.rowCount===1;
+  return result.rowCount===1;
+ }catch(error){if(uniqueViolation(error))return false;throw error;}
+}
+
+/** One durable send reservation. A repeat means the caller must not send again. */
+export async function reserveDelivery(intakeId:string,client?:Pick<Pool,'query'>):Promise<"RESERVED"|"ALREADY_RESERVED"|"NOT_RESERVABLE">{
+ const dbc=client??db();
+ const reserved=await dbc.query(`UPDATE timeease_v2_orders SET last_error=$2
+ WHERE intake_id=$1 AND status='PROCESSING' AND result_path IS NOT NULL
+ AND delivery_message_id IS NULL AND last_error IS NULL
+ RETURNING intake_id`,[intakeId,DELIVERY_RESERVATION]);
+ if(reserved.rowCount===1)return "RESERVED";
+ const existing=await dbc.query<{status:string;result_path:string|null;delivery_message_id:string|null;last_error:string|null}>(
+  "SELECT status,result_path,delivery_message_id,last_error FROM timeease_v2_orders WHERE intake_id=$1",[intakeId]);
+ const row=existing.rows[0];
+ if(row?.status==="PROCESSING"&&row.result_path&&!row.delivery_message_id&&row.last_error===DELIVERY_RESERVATION)return "ALREADY_RESERVED";
+ return "NOT_RESERVABLE";
+}
+
+/** Record one Gmail API id only after the reservation. The same id is an idempotent replay. */
+export async function completeReservedDelivery(intakeId:string,messageId:string,client?:Pick<Pool,'query'>):Promise<"DELIVERED"|"IDEMPOTENT"|"REJECTED">{
+ if(!GMAIL_RECEIPT.test(messageId))throw new Error("INVALID_DELIVERY_RECEIPT");
+ const dbc=client??db();
+ const read=async()=>dbc.query<{status:string;result_path:string|null;delivery_message_id:string|null;last_error:string|null}>(
+  "SELECT status,result_path,delivery_message_id,last_error FROM timeease_v2_orders WHERE intake_id=$1",[intakeId]);
+ const row=(await read()).rows[0];
+ if(row?.status==="DELIVERED"&&row.delivery_message_id===messageId)return "IDEMPOTENT";
+ if(!row||row.status!=="PROCESSING"||!row.result_path||row.delivery_message_id||row.last_error!==DELIVERY_RESERVATION)return "REJECTED";
+ if(await markDelivered(intakeId,messageId,client))return "DELIVERED";
+ const final=(await read()).rows[0];
+ return final?.status==="DELIVERED"&&final.delivery_message_id===messageId?"IDEMPOTENT":"REJECTED";
 }
 /** Fail closed; do not automatically resend potentially delivered messages. */
 export async function flagForReview(intakeId:string,reason:string,client?:Pick<Pool,'query'>):Promise<boolean>{
