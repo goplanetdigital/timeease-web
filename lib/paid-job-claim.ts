@@ -1,9 +1,9 @@
 import {Pool} from "pg";
+import {workerDatabaseConnection} from "./worker-database.ts";
 
 let pool:Pool|undefined;
 function db():Pool{
- const connectionString=process.env.TIMEEASE_DB_DATABASE_URL;
- if(!connectionString)throw new Error("PAYMENT_DATABASE_NOT_CONFIGURED");
+ const connectionString=workerDatabaseConnection();
  return pool??=new Pool({connectionString,max:3,connectionTimeoutMillis:5000});
 }
 export type PaidJob={

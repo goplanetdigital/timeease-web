@@ -4,6 +4,7 @@ import {createHash,timingSafeEqual} from "node:crypto";
 import {NextRequest,NextResponse} from "next/server";
 import {put} from "@vercel/blob";
 import {Pool} from "pg";
+import {workerDatabaseConnection} from "../../../../lib/worker-database";
 export const runtime="nodejs";
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX=20*1024*1024;
@@ -29,9 +30,11 @@ export async function POST(req:NextRequest){
  const contentType=req.headers.get("content-type")||"";
  if(contentType!=="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
   return respond({error:"INVALID_RESULT_TYPE"},415);
+ let workerDb:string;
+ try{workerDb=workerDatabaseConnection();}catch{return respond({error:"WORKER_DATABASE_ROLE_FORBIDDEN"},503);}
  try{
   const blobOptions=await blobAccessOptions(process.env);
-  pool??=new Pool({connectionString:dbUrl,max:3,connectionTimeoutMillis:5000});
+  pool??=new Pool({connectionString:workerDb,max:3,connectionTimeoutMillis:5000});
   const rows=await pool.query("SELECT intake_id FROM timeease_v2_orders WHERE intake_id=$1 AND status='PROCESSING' AND result_path IS NULL",[intakeId]);
   if(rows.rowCount!==1)return respond({error:"JOB_NOT_READY_FOR_RESULT"},409);
   const chunks:Buffer[]=[];

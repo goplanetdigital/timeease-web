@@ -1,5 +1,6 @@
 import {createHash,timingSafeEqual} from "node:crypto";
 import {Pool} from "pg";
+import {workerDatabaseConnection} from "../../../../lib/worker-database";
 import {NextRequest,NextResponse} from "next/server";
 
 export const runtime="nodejs";
@@ -23,8 +24,9 @@ export async function GET(req:NextRequest){
  const secret=process.env.TIMEEASE_V2_WORKER_SECRET;
  if(!secret||secret.length<32)return reply({error:"NOT_CONFIGURED"},503);
  if(!authorized(req,secret))return reply({error:"UNAUTHORIZED"},401);
- const connectionString=process.env.TIMEEASE_DB_DATABASE_URL;
- if(!connectionString)return reply({error:"LEDGER_NOT_CONFIGURED"},503);
+ let connectionString:string;
+ try{connectionString=workerDatabaseConnection();}
+ catch(error){return reply({error:error instanceof Error&&error.message==="WORKER_DATABASE_NOT_CONFIGURED"?"LEDGER_NOT_CONFIGURED":"WORKER_DATABASE_ROLE_FORBIDDEN"},503);}
  const pool=new Pool({connectionString,max:1,connectionTimeoutMillis:3500,idleTimeoutMillis:1000});
  try{
   const result=await pool.query<{status:string;count:string}>(

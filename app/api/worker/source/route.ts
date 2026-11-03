@@ -4,6 +4,7 @@ import {createHash,timingSafeEqual} from "node:crypto";
 import {get} from "@vercel/blob";
 import {NextRequest,NextResponse} from "next/server";
 import {Pool} from "pg";
+import {workerDatabaseConnection} from "../../../../lib/worker-database";
 export const runtime="nodejs";
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const respond=(body:unknown,status:number)=>NextResponse.json(body,{status,headers:{"Cache-Control":"no-store"}});
@@ -41,9 +42,11 @@ export async function GET(req:NextRequest){
  const index=indexRaw===null?NaN:Number(indexRaw);
  if(!ID.test(intakeId)||!Number.isInteger(index)||index<0||index>99)
   return respond({error:"INVALID_SOURCE_REFERENCE"},400);
+ let workerDb:string;
+ try{workerDb=workerDatabaseConnection();}catch{return respond({error:"WORKER_DATABASE_ROLE_FORBIDDEN"},503);}
  try{
   const blobOptions=await blobAccessOptions(process.env);
-  pool??=new Pool({connectionString:dbUrl,max:3,connectionTimeoutMillis:5000});
+  pool??=new Pool({connectionString:workerDb,max:3,connectionTimeoutMillis:5000});
   const result=await pool.query<{source_manifest_path:string}>(
    "SELECT source_manifest_path FROM timeease_v2_orders WHERE intake_id=$1 AND status='PROCESSING'",
    [intakeId]);

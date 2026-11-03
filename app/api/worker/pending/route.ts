@@ -1,6 +1,7 @@
 import {createHash,timingSafeEqual} from "node:crypto";
 import {NextRequest,NextResponse} from "next/server";
 import {Pool} from "pg";
+import {workerDatabaseConnection} from "../../../../lib/worker-database";
 
 export const runtime="nodejs";
 let pool:Pool|undefined;
@@ -20,8 +21,9 @@ export async function GET(req:NextRequest){
  const limitRaw=url.searchParams.get("limit")||"10";
  if(!/^\d{1,2}$/.test(limitRaw)||Number(limitRaw)<1||Number(limitRaw)>25)
   return respond({error:"INVALID_LIMIT"},400);
- const connectionString=process.env.TIMEEASE_DB_DATABASE_URL;
- if(!connectionString)return respond({error:"DATABASE_NOT_CONFIGURED"},503);
+ let connectionString:string;
+ try{connectionString=workerDatabaseConnection();}
+ catch(error){return respond({error:error instanceof Error&&error.message==="WORKER_DATABASE_NOT_CONFIGURED"?"DATABASE_NOT_CONFIGURED":"WORKER_DATABASE_ROLE_FORBIDDEN"},503);}
  try{
   pool??=new Pool({connectionString,max:3,connectionTimeoutMillis:5000});
   const result=await pool.query<{intake_id:string}>(
