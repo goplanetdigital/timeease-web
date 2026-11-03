@@ -2,7 +2,7 @@ import {blobAccessConfigured,blobAccessOptions} from "../../../../lib/blob-acces
 import {previewBlobAccessBlocked} from "../../../../lib/preview-blob-guard";
 import {createHash,timingSafeEqual} from "node:crypto";
 import {NextRequest,NextResponse} from "next/server";
-import {markResultReady,completeReservedDelivery,reserveDelivery,flagForReview} from "../../../../lib/paid-job-claim";
+import {markResultReady,completeReservedDelivery,reserveDelivery,reviewUnconfirmedReceipt,flagForReview} from "../../../../lib/paid-job-claim";
 import {head} from "@vercel/blob";
 export const runtime="nodejs";
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -60,14 +60,19 @@ export async function POST(req:NextRequest){
   }
   if(b.action==="reserve_delivery"){
    const reservation=await reserveDelivery(b.intakeId);
-   if(reservation==="NOT_RESERVABLE")return reply({ok:false,reservation,send:false},409);
-   return reply({ok:true,reservation,send:reservation==="RESERVED"},200);
+   if(reservation==="NOT_RESERVABLE")return reply({ok:false,reservation,send:false,reviewRequired:false},409);
+   const send=reservation==="RESERVED";
+   return reply({ok:true,reservation,send,reviewRequired:!send},200);
   }
-  if(b.action==="delivered"&&typeof b.messageId==="string"){
-   if(!/^[a-f0-9]{10,64}$/i.test(b.messageId))return reply({error:"INVALID_DELIVERY_RECEIPT"},400);
-   const state=await completeReservedDelivery(b.intakeId,b.messageId);
-   if(state==="REJECTED")return reply({ok:false},409);
-   return reply({ok:true,idempotent:state==="IDEMPOTENT"},200);
+  if(b.action==="delivered"){
+   const messageId=typeof b.messageId==="string"?b.messageId:"";
+   if(!/^[a-f0-9]{10,64}$/i.test(messageId)){
+    const reviewRequired=await reviewUnconfirmedReceipt(b.intakeId);
+    return reply({error:"INVALID_DELIVERY_RECEIPT",send:false,reviewRequired},reviewRequired?409:400);
+   }
+   const state=await completeReservedDelivery(b.intakeId,messageId);
+   if(state==="REJECTED")return reply({ok:false,send:false},409);
+   return reply({ok:true,idempotent:state==="IDEMPOTENT",send:false},200);
   }
   if(b.action==="review"&&typeof b.reason==="string"){
    const ok=await flagForReview(b.intakeId,b.reason);

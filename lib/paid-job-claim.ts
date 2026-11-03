@@ -24,6 +24,8 @@ export async function claimPaidJob(intakeId:string,client?:Pick<Pool,'query'>):P
 }
 const GMAIL_RECEIPT=/^[a-f0-9]{10,64}$/i;
 export const DELIVERY_RESERVATION="DELIVERY_RESERVED_NO_AUTO_RESEND";
+export const REVIEW_ALREADY_RESERVED="DELIVERY_ALREADY_RESERVED_NO_AUTO_RESEND";
+export const REVIEW_UNCONFIRMED_RECEIPT="DELIVERY_RECEIPT_UNCONFIRMED_NO_AUTO_RESEND";
 function uniqueViolation(error:unknown):boolean{
  return typeof error==="object"&&error!==null&&"code" in error&&(error as {code?:unknown}).code==="23505";
 }
@@ -63,8 +65,19 @@ export async function reserveDelivery(intakeId:string,client?:Pick<Pool,'query'>
  const existing=await dbc.query<{status:string;result_path:string|null;delivery_message_id:string|null;last_error:string|null}>(
   "SELECT status,result_path,delivery_message_id,last_error FROM timeease_v2_orders WHERE intake_id=$1",[intakeId]);
  const row=existing.rows[0];
- if(row?.status==="PROCESSING"&&row.result_path&&!row.delivery_message_id&&row.last_error===DELIVERY_RESERVATION)return "ALREADY_RESERVED";
+ if(row?.status==="PROCESSING"&&row.result_path&&!row.delivery_message_id&&row.last_error===DELIVERY_RESERVATION){
+  await flagForReview(intakeId,REVIEW_ALREADY_RESERVED,client);
+  return "ALREADY_RESERVED";
+ }
  return "NOT_RESERVABLE";
+}
+/** An unclear receipt after a reservation is manual review. It must not be sent again. */
+export async function reviewUnconfirmedReceipt(intakeId:string,client?:Pick<Pool,'query'>):Promise<boolean>{
+ const existing=await (client??db()).query<{status:string;result_path:string|null;delivery_message_id:string|null;last_error:string|null}>(
+  "SELECT status,result_path,delivery_message_id,last_error FROM timeease_v2_orders WHERE intake_id=$1",[intakeId]);
+ const row=existing.rows[0];
+ if(row?.status!=="PROCESSING"||!row.result_path||row.delivery_message_id||row.last_error!==DELIVERY_RESERVATION)return false;
+ return flagForReview(intakeId,REVIEW_UNCONFIRMED_RECEIPT,client);
 }
 
 /** Record one Gmail API id only after the reservation. The same id is an idempotent replay. */
