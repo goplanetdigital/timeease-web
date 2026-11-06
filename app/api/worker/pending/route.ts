@@ -33,7 +33,12 @@ export async function GET(req:NextRequest){
  }catch(error){
   // Log only a stable PostgreSQL error code; never log URLs, SQL, credentials, or customer data.
   const code=error&&typeof error==="object"&&"code" in error&&typeof error.code==="string"&&/^[A-Z0-9]{5}$/.test(error.code)?error.code:"UNCLASSIFIED";
-  console.error("timeease_worker_pending_db_failure", {code});
+  const cause=error instanceof Error?error.cause:undefined;
+  const nestedCode=cause&&typeof cause==="object"&&"code" in cause&&typeof cause.code==="string"&&/^[A-Z0-9_]{3,32}$/.test(cause.code)?cause.code:"NONE";
+  const name=error instanceof Error&&["Error","TypeError","AggregateError"].includes(error.name)?error.name:"OTHER";
+  const message=error instanceof Error?error.message:"";
+  const category=/timed?\s*out|timeout/i.test(message)?"TIMEOUT":/certificate|ssl|tls/i.test(message)?"TLS":/connect|network|ENET|EHOST|ECONN/i.test(message)?"CONNECT":/password|authenticat/i.test(message)?"AUTH":/permission|privilege/i.test(message)?"PERMISSION":"OTHER";
+  console.error("timeease_worker_pending_db_failure", {code,nestedCode,name,category});
   return respond({error:"WORKER_LEDGER_UNAVAILABLE"},503);
  }
 }
