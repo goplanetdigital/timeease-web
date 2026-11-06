@@ -30,5 +30,10 @@ export async function GET(req:NextRequest){
    "SELECT intake_id FROM timeease_v2_orders WHERE status='PAID' AND source_manifest_path = 'intake-v2/' || intake_id::text || '/manifest.json' ORDER BY created_at ASC LIMIT $1",
    [Number(limitRaw)]);
   return respond({intakeIds:result.rows.map(row=>row.intake_id),intakeId:result.rows[0]?.intake_id??null},200);
- }catch{return respond({error:"WORKER_LEDGER_UNAVAILABLE"},503)}
+ }catch(error){
+  // Log only a stable PostgreSQL error code; never log URLs, SQL, credentials, or customer data.
+  const code=error&&typeof error==="object"&&"code" in error&&typeof error.code==="string"&&/^[A-Z0-9]{5}$/.test(error.code)?error.code:"UNCLASSIFIED";
+  console.error("timeease_worker_pending_db_failure", {code});
+  return respond({error:"WORKER_LEDGER_UNAVAILABLE"},503);
+ }
 }
