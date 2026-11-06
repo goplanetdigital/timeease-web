@@ -38,7 +38,8 @@ export async function GET(req:NextRequest){
   const name=error instanceof Error&&["Error","TypeError","AggregateError"].includes(error.name)?error.name:"OTHER";
   const message=error instanceof Error?error.message:"";
   const category=/timed?\s*out|timeout/i.test(message)?"TIMEOUT":/certificate|ssl|tls/i.test(message)?"TLS":/connect|network|ENET|EHOST|ECONN/i.test(message)?"CONNECT":/password|authenticat/i.test(message)?"AUTH":/permission|privilege/i.test(message)?"PERMISSION":"OTHER";
-  console.error("timeease_worker_pending_db_failure", {code,nestedCode,name,category});
+  const authSubtype=/SASL.*password must be a string/i.test(message)?"PASSWORD_NOT_STRING":/SASL.*client password/i.test(message)?"SASL_CLIENT_PASSWORD":/password authentication failed/i.test(message)?"PASSWORD_REJECTED":/no password supplied/i.test(message)?"PASSWORD_MISSING":/authentication failed/i.test(message)?"AUTH_REJECTED":/password/i.test(message)?"PASSWORD_OTHER":"NONE";
+  console.error("timeease_worker_pending_db_failure", {code,nestedCode,name,category,authSubtype});
   return respond({error:"WORKER_LEDGER_UNAVAILABLE"},503);
  }
 }
