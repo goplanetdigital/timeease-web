@@ -50,11 +50,14 @@ test('operator POST uses the real existing Bearer verifier in-process and labels
  assert.equal(b.transport,'protected-browser-post-with-in-process-bearer-verification');assert.equal(r.headers.get('cache-control'),'no-store');
  assert.equal(JSON.stringify(b).includes(env.TIMEEASE_TEST_WORKER_SECRET),false);
 });
-test('Production, development, other branches and enabled payment flags cannot use either probe',async()=>{
- for(const change of [{VERCEL_ENV:'production'},{VERCEL_ENV:'development'},{VERCEL_GIT_COMMIT_REF:'main'},
-  {TIMEEASE_V2_CHECKOUT_ENABLED:'true'},{TIMEEASE_V2_PAYMENT_LEDGER_ENABLED:'true'},{TIMEEASE_TEST_ALLOWED_RECIPIENT:'customer@example.com'}]){
-  const s=setup(change);assert.equal((await s.controller.POST(s.form())).status,404);assert.equal((await s.worker.POST(s.probe())).status,404);
-  assert.equal(s.delegated(),0);assert.equal(s.external(),0);
+test('Production, development, other branches and checkout enabled cannot use either probe',async()=>{
+ for(const ledger of ['true','false']){
+  for(const change of [{VERCEL_ENV:'production'},{VERCEL_ENV:'development'},{VERCEL_GIT_COMMIT_REF:'main'},
+   {TIMEEASE_V2_CHECKOUT_ENABLED:'true'},{TIMEEASE_ISOLATED_TEST_MODE:'false'},{TIMEEASE_TEST_ALLOWED_RECIPIENT:'customer@example.com'}]){
+   const s=setup({TIMEEASE_V2_PAYMENT_LEDGER_ENABLED:ledger,...change});
+   assert.equal((await s.controller.POST(s.form())).status,404);assert.equal((await s.worker.POST(s.probe())).status,404);
+   assert.equal(s.delegated(),0);assert.equal(s.external(),0);
+  }
  }
  const s=setup();assert.equal((await s.controller.POST(s.form({},'timeease-ruby.vercel.app'))).status,404);assert.equal(s.delegated(),0);
 });
@@ -92,11 +95,36 @@ test('probe rejects mismatched scope/nonce/effects instead of accepting a generi
  }
 });
 test('page renders only a fixed POST form, with a public correlation nonce and no credential',async()=>{
- const page={};const jsx=(type,props)=>({type,props});
- vm.runInNewContext(compile('app/preview-worker-auth-check/page.tsx',true),{exports:page,process:{env},require:name=>
-  name==='next/headers'?{headers:async()=>new Headers({host:env.VERCEL_URL})}:name==='next/navigation'?{notFound:()=>{throw Error('404');}}:
-  name==='node:crypto'?{randomUUID:()=>nonce}:name==='react/jsx-runtime'?{jsx,jsxs:jsx}:fixtures});
- const tree=await page.default();const serialized=JSON.stringify(tree);assert.equal(serialized.includes(env.TIMEEASE_TEST_WORKER_SECRET),false);
- const children=tree.props.children,form=children.find(c=>c.type==='form');assert.equal(form.props.method,'post');assert.equal(form.props.action,'/api/preview-worker-auth-check');
- assert.equal(form.props.children[1].props.value,nonce);
+ for(const ledger of ['true','false']){
+  const options={...env,TIMEEASE_V2_PAYMENT_LEDGER_ENABLED:ledger};
+  const page={};const jsx=(type,props)=>({type,props});
+  vm.runInNewContext(compile('app/preview-worker-auth-check/page.tsx',true),{exports:page,process:{env:options},require:name=>
+   name==='next/headers'?{headers:async()=>new Headers({host:env.VERCEL_URL})}:name==='next/navigation'?{notFound:()=>{throw Error('404');}}:
+   name==='node:crypto'?{randomUUID:()=>nonce}:name==='react/jsx-runtime'?{jsx,jsxs:jsx}:fixtures});
+  const tree=await page.default();const serialized=JSON.stringify(tree);assert.equal(serialized.includes(env.TIMEEASE_TEST_WORKER_SECRET),false);
+  const children=tree.props.children,form=children.find(c=>c.type==='form');assert.equal(form.props.method,'post');assert.equal(form.props.action,'/api/preview-worker-auth-check');
+  assert.equal(form.props.children[1].props.value,nonce);
+ }
+});
+
+test('ledger true and false permit only authenticated auth-only preflight with no external effects',async()=>{
+ for(const ledger of ['true','false']){
+  const s=setup({TIMEEASE_V2_PAYMENT_LEDGER_ENABLED:ledger});
+  const direct=await s.worker.POST(s.probe());assert.equal(direct.status,200);
+  const r=await s.controller.POST(s.form()),b=await r.json();assert.equal(r.status,200);
+  assert.equal(b.authenticated,true);assert.equal(b.externalWorkerHttpVerified,false);
+  for(const key of ['databaseAccessed','blobAccessed','ordersTouched','emailSent'])assert.equal(b[key],false);
+  assert.equal(s.external(),0);assert.equal(s.delegated(),1);
+  assert.equal((await s.worker.POST(s.probe(undefined,''))).status,401);
+  assert.equal((await s.controller.POST(s.form({origin:'https://foreign.example'}))).status,403);
+  assert.equal((await s.controller.POST(s.form({},'timeease-ruby.vercel.app'))).status,404);
+  assert.equal(s.external(),0);
+ }
+});
+test('ledger-enabled Preview still rejects every order action before external access',async()=>{
+ const s=setup({TIMEEASE_V2_PAYMENT_LEDGER_ENABLED:'true'});
+ for(const action of ['status','prepare','claim','source','result','delivered','review','recover','cleanup']){
+  const r=await s.worker.POST(s.probe({action,case:'failure'}));assert.equal(r.status,404,action);
+ }
+ assert.equal(s.external(),0);
 });

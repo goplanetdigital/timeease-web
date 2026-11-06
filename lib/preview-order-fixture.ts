@@ -5,10 +5,15 @@ export const ORDER_FIXTURES={
  delivery:'d7438959-82c2-4d9a-959c-b065ecc12720',
  failure:'5b6b7ad4-3ff3-409c-a584-d47c6d77ca97',
 } as const;
-export function previewOrderEnvironment(env:Record<string,string|undefined>,hostname:string):boolean{
- return isIsolatedPreview(env)&&env.VERCEL_GIT_COMMIT_REF===PREVIEW_ORDER_BRANCH&&
+/** Auth-only probes never access the payment ledger; its flag must not gate them. */
+export function previewAuthEnvironment(env:Record<string,string|undefined>,hostname:string):boolean{
+ return env.VERCEL_ENV==='preview'&&env.TIMEEASE_ISOLATED_TEST_MODE==='true'&&
+  env.TIMEEASE_V2_CHECKOUT_ENABLED==='false'&&env.VERCEL_GIT_COMMIT_REF===PREVIEW_ORDER_BRANCH&&
   Boolean(env.VERCEL_URL)&&hostname===env.VERCEL_URL&&
   isAllowedTestRecipient(TEST_RECIPIENT,env.TIMEEASE_TEST_ALLOWED_RECIPIENT);
+}
+export function previewOrderEnvironment(env:Record<string,string|undefined>,hostname:string):boolean{
+ return isIsolatedPreview(env)&&previewAuthEnvironment(env,hostname);
 }
 export function fixtureMatches(row:Record<string,unknown>,kind:keyof typeof ORDER_FIXTURES):boolean{
  const id=ORDER_FIXTURES[kind];

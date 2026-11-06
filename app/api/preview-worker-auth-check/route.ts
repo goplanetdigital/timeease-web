@@ -1,6 +1,6 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {POST as workerPost} from '../test-worker/order-e2e/route';
-import {previewOrderEnvironment} from '../../../lib/preview-order-fixture';
+import {previewAuthEnvironment} from '../../../lib/preview-order-fixture';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 const reply=(body:unknown,status:number)=>NextResponse.json(body,{status,headers:{'Cache-Control':'no-store'}});
@@ -10,7 +10,7 @@ const reply=(body:unknown,status:number)=>NextResponse.json(body,{status,headers
  */
 export async function POST(req:NextRequest){
  const env=process.env;
- if(!previewOrderEnvironment(env,new URL(req.url).hostname))return reply({error:'PREVIEW_TEST_ONLY'},404);
+ if(!previewAuthEnvironment(env,new URL(req.url).hostname))return reply({error:'PREVIEW_TEST_ONLY'},404);
  if(req.headers.get('origin')!==`https://${env.VERCEL_URL}`||req.headers.get('sec-fetch-site')!=='same-origin')
   return reply({error:'SAME_ORIGIN_REQUIRED'},403);
  if(req.headers.get('content-type')!=='application/x-www-form-urlencoded')return reply({error:'FORM_REQUIRED'},415);

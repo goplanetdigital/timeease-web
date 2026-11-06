@@ -4,7 +4,7 @@ import {Pool,PoolClient} from 'pg';
 import {put,get,head,del,list} from '@vercel/blob';
 import {previewBlobOptions} from '../../../../lib/preview-runtime-evidence';
 import {claimPaidJob,markResultReady,markDelivered,flagForReview} from '../../../../lib/paid-job-claim';
-import {previewOrderEnvironment,fixtureMatches,ORDER_FIXTURES,TEST_RECIPIENT,syntheticInvoicePdf} from '../../../../lib/preview-order-fixture';
+import {previewAuthEnvironment,previewOrderEnvironment,fixtureMatches,ORDER_FIXTURES,TEST_RECIPIENT,syntheticInvoicePdf} from '../../../../lib/preview-order-fixture';
 import {isIsolatedNeonEndpoint,PREVIEW_NEON_BRANCH,PREVIEW_NEON_PROJECT} from '../../../../lib/test-worker-guards';
 import {recoverPreviewFailure} from '../../../../lib/preview-order-recovery';
 export const runtime='nodejs';
@@ -33,7 +33,7 @@ async function bytes(stream:ReadableStream<Uint8Array>,limit:number){
  */
 export async function POST(req:NextRequest){
  const env=process.env;
- if(!previewOrderEnvironment(env,new URL(req.url).hostname))return reply({error:'PREVIEW_TEST_ONLY'},404);
+ if(!previewAuthEnvironment(env,new URL(req.url).hostname))return reply({error:'PREVIEW_TEST_ONLY'},404);
  const secret=env.TIMEEASE_TEST_WORKER_SECRET,auth=req.headers.get('authorization')||'';
  if(!secret||secret.length<32)return reply({error:'TEST_AUTH_MISSING'},503);
  if(!auth.startsWith('Bearer ')||auth.length<=7||auth.length>519||
@@ -58,6 +58,8 @@ export async function POST(req:NextRequest){
    deploymentHost:env.VERCEL_URL,requestNonce:body.nonce,databaseAccessed:false,
    blobAccessed:false,ordersTouched:false,emailSent:false});
  }
+ // All order actions retain the stricter ledger-disabled fixture boundary.
+ if(!previewOrderEnvironment(env,new URL(req.url).hostname))return reply({error:'PREVIEW_TEST_ONLY'},404);
  const {action}=body,kind=body.case??'delivery';
  if(kind!=='delivery'&&kind!=='failure')return reply({error:'INVALID_FIXTURE'},400);
  if(action==='recover'&&kind!=='failure')return reply({error:'FAILURE_FIXTURE_REQUIRED'},400);

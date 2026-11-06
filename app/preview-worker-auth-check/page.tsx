@@ -1,10 +1,10 @@
 import {headers} from 'next/headers';
 import {notFound} from 'next/navigation';
 import {randomUUID} from 'node:crypto';
-import {previewOrderEnvironment} from '../../lib/preview-order-fixture';
+import {previewAuthEnvironment} from '../../lib/preview-order-fixture';
 export const dynamic='force-dynamic';
 export default async function PreviewWorkerAuthCheck(){
- if(!previewOrderEnvironment(process.env,(await headers()).get('host')||''))notFound();
+ if(!previewAuthEnvironment(process.env,(await headers()).get('host')||''))notFound();
  return <main style={{maxWidth:640,margin:'64px auto',padding:24,fontFamily:'sans-serif'}}>
   <h1>Preview 认证预检</h1>
   <p>使用现有 Preview 服务端凭证，仅验证原有 Bearer 校验。不会连接数据库、访问 Blob、领取订单或发送邮件。</p>
