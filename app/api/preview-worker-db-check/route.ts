@@ -1,7 +1,7 @@
 import {createHash,timingSafeEqual} from "node:crypto";
 import {NextRequest,NextResponse} from "next/server";
 import {Client} from "pg";
-import {workerDatabaseConnection} from "../../../../lib/worker-database";
+import {workerDatabaseConnection} from "../../../lib/worker-database";
 
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
