@@ -23,7 +23,11 @@ export async function GET(req:NextRequest){
   return respond({error:"INVALID_LIMIT"},400);
  let connectionString:string;
  try{connectionString=workerDatabaseConnection();}
- catch(error){return respond({error:error instanceof Error&&error.message==="WORKER_DATABASE_NOT_CONFIGURED"?"DATABASE_NOT_CONFIGURED":"WORKER_DATABASE_ROLE_FORBIDDEN"},503);}
+ catch(error){
+  const message=error instanceof Error?error.message:"";
+  return respond({error:message==="WORKER_DATABASE_NOT_CONFIGURED"?"DATABASE_NOT_CONFIGURED":
+   message==="WORKER_DATABASE_PASSWORD_MISSING"?message:"WORKER_DATABASE_ROLE_FORBIDDEN"},503);
+ }
  try{
   pool??=new Pool({connectionString,max:3,connectionTimeoutMillis:5000});
   const result=await pool.query<{intake_id:string}>(
