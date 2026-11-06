@@ -4,7 +4,20 @@ export const TEST_RECIPIENT='jcaiworker@gmail.com';
 export const ORDER_FIXTURES={
  delivery:'d7438959-82c2-4d9a-959c-b065ecc12720',
  failure:'5b6b7ad4-3ff3-409c-a584-d47c6d77ca97',
+ race:'29a22afd-a1d7-47d2-b97b-03d2a3eaa0c8',
+ reservation:'37a129e0-e879-4f6a-b306-3c112afd3d5a',
+ delivery_v2:'6b2322d8-c7a0-45ff-9ab3-082e2684a067',
 } as const;
+export type PreviewFixtureCase=keyof typeof ORDER_FIXTURES;
+export function isPreviewFixtureCase(value:unknown):value is PreviewFixtureCase{
+ return typeof value==='string'&&Object.prototype.hasOwnProperty.call(ORDER_FIXTURES,value);
+}
+export function isFreshPreviewFixture(kind:PreviewFixtureCase):boolean{
+ return kind==='race'||kind==='reservation'||kind==='delivery_v2';
+}
+export function isRecoveryPreviewFixture(id:string):boolean{
+ return [ORDER_FIXTURES.failure,ORDER_FIXTURES.race,ORDER_FIXTURES.delivery_v2].some(fixed=>fixed===id);
+}
 /** Auth-only probes never access the payment ledger; its flag must not gate them. */
 export function previewAuthEnvironment(env:Record<string,string|undefined>,hostname:string):boolean{
  return env.VERCEL_ENV==='preview'&&env.TIMEEASE_ISOLATED_TEST_MODE==='true'&&
@@ -17,7 +30,10 @@ export function previewOrderEnvironment(env:Record<string,string|undefined>,host
 }
 export function fixtureMatches(row:Record<string,unknown>,kind:keyof typeof ORDER_FIXTURES):boolean{
  const id=ORDER_FIXTURES[kind];
- return row.intake_id===id&&row.shopify_order_id===`preview-e2e:${kind}:${id}`&&
+ const reference=isFreshPreviewFixture(kind)
+  ?`preview-pr20-20261106-r1:${kind==='delivery_v2'?'delivery':kind}:${id}`
+  :`preview-e2e:${kind}:${id}`;
+ return row.intake_id===id&&row.shopify_order_id===reference&&
   row.shopify_shop_domain==='preview.invalid'&&row.variant_id==='synthetic-invoice'&&
   Number(row.amount_usd)===1&&row.customer_email===TEST_RECIPIENT&&
   row.source_manifest_path===`intake-v2/${id}/manifest.json`;
@@ -39,3 +55,4 @@ export function syntheticInvoicePdf():Buffer{
  pdf+=`trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
  return Buffer.from(pdf);
 }
+

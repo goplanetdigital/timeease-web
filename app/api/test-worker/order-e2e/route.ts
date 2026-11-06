@@ -3,15 +3,15 @@ import {createHash,timingSafeEqual} from 'node:crypto';
 import {Pool,PoolClient} from 'pg';
 import {put,get,head,del,list} from '@vercel/blob';
 import {previewBlobOptions} from '../../../../lib/preview-runtime-evidence';
-import {claimPaidJob,markResultReady,markDelivered,flagForReview} from '../../../../lib/paid-job-claim';
-import {previewAuthEnvironment,previewOrderEnvironment,fixtureMatches,ORDER_FIXTURES,TEST_RECIPIENT,syntheticInvoicePdf} from '../../../../lib/preview-order-fixture';
+import {claimPaidJob,markResultReady,markDelivered,flagForReview,reserveDelivery} from '../../../../lib/paid-job-claim';
+import {previewAuthEnvironment,previewOrderEnvironment,fixtureMatches,ORDER_FIXTURES,TEST_RECIPIENT,syntheticInvoicePdf,isPreviewFixtureCase,isFreshPreviewFixture,isRecoveryPreviewFixture} from '../../../../lib/preview-order-fixture';
 import {isIsolatedNeonEndpoint,PREVIEW_NEON_BRANCH,PREVIEW_NEON_PROJECT} from '../../../../lib/test-worker-guards';
 import {recoverPreviewFailure} from '../../../../lib/preview-order-recovery';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 const MAX_BODY=1500000;
 const reply=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{'Cache-Control':'no-store'}});
-const ACTIONS=['auth_check','status','prepare','claim','source','result','delivered','review','recover','cleanup'];
+const ACTIONS=['auth_check','status','prepare','claim','source','result','delivered','review','recover','cleanup','reserve_delivery'];
 /** Diagnostic only: no DB, Blob, payment or email side effects; POST remains authenticated. */
 export async function GET(req:NextRequest){
  if(!previewOrderEnvironment(process.env,new URL(req.url).hostname))return reply({error:'PREVIEW_TEST_ONLY'},404);
@@ -61,8 +61,12 @@ export async function POST(req:NextRequest){
  // All order actions retain the stricter ledger-disabled fixture boundary.
  if(!previewOrderEnvironment(env,new URL(req.url).hostname))return reply({error:'PREVIEW_TEST_ONLY'},404);
  const {action}=body,kind=body.case??'delivery';
- if(kind!=='delivery'&&kind!=='failure')return reply({error:'INVALID_FIXTURE'},400);
- if(action==='recover'&&kind!=='failure')return reply({error:'FAILURE_FIXTURE_REQUIRED'},400);
+ if(!isPreviewFixtureCase(kind))return reply({error:'INVALID_FIXTURE'},400);
+ // New fixtures are no-email / no-cleanup acceptance only. Old cases are unchanged.
+ if(isFreshPreviewFixture(kind)&&['delivered','cleanup'].includes(action))return reply({error:'NEW_FIXTURE_NO_DELIVERY_OR_CLEANUP'},400);
+ if(isFreshPreviewFixture(kind)&&action==='result'&&kind!=='reservation')return reply({error:'RESERVATION_FIXTURE_REQUIRED'},400);
+ if(action==='reserve_delivery'&&kind!=='reservation')return reply({error:'RESERVATION_FIXTURE_REQUIRED'},400);
+ if(action==='recover'&&!isRecoveryPreviewFixture(ORDER_FIXTURES[kind]))return reply({error:'FAILURE_FIXTURE_REQUIRED'},400);
  const keys=action==='result'?['action','case','xlsxBase64']:action==='delivered'?['action','case','messageId']:['action','case'];
  if(Object.keys(body).some(k=>!keys.includes(k)))return reply({error:'UNEXPECTED_INPUT'},400);
  let workbook:Buffer|undefined;
@@ -136,6 +140,11 @@ export async function POST(req:NextRequest){
     if(stored.size!==workbook!.length||!readback?.stream||!(await bytes(readback.stream,workbook!.length)).equals(workbook!))throw Error('RESULT_READBACK_FAILED');
     const ok=await markResultReady(id,resultPath,client);status=ok?201:409;data={resultReady:ok,readBackVerified:true};
    }
+  }else if(action==='reserve_delivery'){
+   const reservation=await reserveDelivery(id,client);
+   status=reservation==='NOT_RESERVABLE'?409:200;
+   data={reservation,send:false,noEmailSent:true,outboxVerified:false,
+    reviewRequired:reservation==='ALREADY_RESERVED'};
   }else if(action==='delivered'){
    const ok=row.result_path===resultPath&&await markDelivered(id,body.messageId as string,client);
    status=ok?200:409;data={delivered:ok,providerReceiptRequiresExternalVerification:true};
@@ -164,3 +173,4 @@ export async function POST(req:NextRequest){
   return reply({error:code},503);
  }finally{client?.release();await pool.end().catch(()=>{});}
 }
+
