@@ -7,6 +7,9 @@ export const ORDER_FIXTURES={
  race:'29a22afd-a1d7-47d2-b97b-03d2a3eaa0c8',
  reservation:'37a129e0-e879-4f6a-b306-3c112afd3d5a',
  delivery_v2:'6b2322d8-c7a0-45ff-9ab3-082e2684a067',
+ outbox_persist:'b8f0b839-e0ff-4ef5-bf90-c32513c83fbf',
+ outbox_failure:'712fb48a-03e8-470f-82fe-e8a5dbe12b7e',
+ outbox_timeout:'52c899ce-3ea0-4d03-b9df-7e5ae2d83d99',
 } as const;
 export type PreviewFixtureCase=keyof typeof ORDER_FIXTURES;
 export function isPreviewFixtureCase(value:unknown):value is PreviewFixtureCase{
@@ -14,6 +17,9 @@ export function isPreviewFixtureCase(value:unknown):value is PreviewFixtureCase{
 }
 export function isFreshPreviewFixture(kind:PreviewFixtureCase):boolean{
  return kind==='race'||kind==='reservation'||kind==='delivery_v2';
+}
+export function isOutboxPreviewFixture(kind:PreviewFixtureCase):boolean{
+ return kind==='outbox_persist'||kind==='outbox_failure'||kind==='outbox_timeout';
 }
 export function isRecoveryPreviewFixture(id:string):boolean{
  return [ORDER_FIXTURES.failure,ORDER_FIXTURES.race,ORDER_FIXTURES.delivery_v2].some(fixed=>fixed===id);
@@ -30,7 +36,9 @@ export function previewOrderEnvironment(env:Record<string,string|undefined>,host
 }
 export function fixtureMatches(row:Record<string,unknown>,kind:keyof typeof ORDER_FIXTURES):boolean{
  const id=ORDER_FIXTURES[kind];
- const reference=isFreshPreviewFixture(kind)
+ const reference=isOutboxPreviewFixture(kind)
+  ?`preview-pr20-outbox-20261107:${kind}:${id}`
+  :isFreshPreviewFixture(kind)
   ?`preview-pr20-20261106-r1:${kind==='delivery_v2'?'delivery':kind}:${id}`
   :`preview-e2e:${kind}:${id}`;
  return row.intake_id===id&&row.shopify_order_id===reference&&

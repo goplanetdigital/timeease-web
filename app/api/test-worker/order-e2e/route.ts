@@ -1,17 +1,18 @@
 import {NextRequest,NextResponse} from 'next/server';
-import {createHash,timingSafeEqual} from 'node:crypto';
+import {createHash,timingSafeEqual,randomUUID} from 'node:crypto';
 import {Pool,PoolClient} from 'pg';
 import {put,get,head,del,list} from '@vercel/blob';
 import {previewBlobOptions} from '../../../../lib/preview-runtime-evidence';
 import {claimPaidJob,markResultReady,markDelivered,flagForReview,reserveDelivery} from '../../../../lib/paid-job-claim';
-import {previewAuthEnvironment,previewOrderEnvironment,fixtureMatches,ORDER_FIXTURES,TEST_RECIPIENT,syntheticInvoicePdf,isPreviewFixtureCase,isFreshPreviewFixture,isRecoveryPreviewFixture} from '../../../../lib/preview-order-fixture';
+import {previewAuthEnvironment,previewOrderEnvironment,fixtureMatches,ORDER_FIXTURES,TEST_RECIPIENT,syntheticInvoicePdf,isPreviewFixtureCase,isFreshPreviewFixture,isRecoveryPreviewFixture,isOutboxPreviewFixture} from '../../../../lib/preview-order-fixture';
+import {requireV2OutboxSchema,publishV2Result,claimV2Outbox,recoverV2Outbox,failV2OutboxBeforeSend,inspectV2Outbox} from '../../../../lib/v2-delivery-outbox';
 import {isIsolatedNeonEndpoint,PREVIEW_NEON_BRANCH,PREVIEW_NEON_PROJECT} from '../../../../lib/test-worker-guards';
 import {recoverPreviewFailure} from '../../../../lib/preview-order-recovery';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 const MAX_BODY=1500000;
 const reply=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{'Cache-Control':'no-store'}});
-const ACTIONS=['auth_check','status','prepare','claim','source','result','delivered','review','recover','cleanup','reserve_delivery'];
+const ACTIONS=['auth_check','status','prepare','claim','source','result','delivered','review','recover','cleanup','reserve_delivery','outbox_enqueue','outbox_claim','outbox_fail','outbox_recover'];
 /** Diagnostic only: no DB, Blob, payment or email side effects; POST remains authenticated. */
 export async function GET(req:NextRequest){
  if(!previewOrderEnvironment(process.env,new URL(req.url).hostname))return reply({error:'PREVIEW_TEST_ONLY'},404);
@@ -62,6 +63,12 @@ export async function POST(req:NextRequest){
  if(!previewOrderEnvironment(env,new URL(req.url).hostname))return reply({error:'PREVIEW_TEST_ONLY'},404);
  const {action}=body,kind=body.case??'delivery';
  if(!isPreviewFixtureCase(kind))return reply({error:'INVALID_FIXTURE'},400);
+ const outboxCase=isOutboxPreviewFixture(kind);
+ if(outboxCase&&!['status','prepare','claim','source','result','outbox_enqueue','outbox_claim','outbox_fail','outbox_recover'].includes(action))
+  return reply({error:'OUTBOX_NO_EMAIL_ACCEPTANCE_ONLY'},400);
+ if(action.startsWith('outbox_')&&!outboxCase)return reply({error:'OUTBOX_FIXTURE_REQUIRED'},400);
+ if(action==='outbox_recover'&&kind!=='outbox_timeout')return reply({error:'OUTBOX_TIMEOUT_FIXTURE_REQUIRED'},400);
+ if(action==='outbox_fail'&&kind==='outbox_timeout')return reply({error:'OUTBOX_KNOWN_FAILURE_FIXTURE_REQUIRED'},400);
  // New fixtures are no-email / no-cleanup acceptance only. Old cases are unchanged.
  if(isFreshPreviewFixture(kind)&&['delivered','cleanup'].includes(action))return reply({error:'NEW_FIXTURE_NO_DELIVERY_OR_CLEANUP'},400);
  if(isFreshPreviewFixture(kind)&&action==='result'&&kind!=='reservation')return reply({error:'RESERVATION_FIXTURE_REQUIRED'},400);
@@ -101,6 +108,9 @@ export async function POST(req:NextRequest){
   if(who?.role!=='timeease_worker_limited'||who?.database!=='neondb'||who?.project!==PREVIEW_NEON_PROJECT||
    who?.branch!==PREVIEW_NEON_BRANCH||who?.elevated!==false||who?.member!==false||who?.forbidden_write!==false)
    throw Error('ISOLATION_REQUIRED');
+  // Read-only preflight; legacy FK targets or missing scoped grants fail before
+  // any order transition or Blob mutation. No runtime schema/permission repair.
+  if(outboxCase)await requireV2OutboxSchema(client);
   const id=ORDER_FIXTURES[kind],prefix=`intake-v2/${id}/`,resultPath=`results-v2/${id}/consolidated.xlsx`;
   const result=await client.query('SELECT * FROM public.timeease_v2_orders WHERE intake_id=$1 FOR UPDATE',[id]);
   const row=result.rows[0];
@@ -109,7 +119,8 @@ export async function POST(req:NextRequest){
   const manifest=JSON.stringify({id,synthetic:true,service:'invoice',files:[{pathname:prefix+'file-001.pdf',bytes:pdf.length,originalName:'synthetic-test-004.pdf'}]});
   let data:Record<string,unknown>={};let status=200;
   if(action==='status')data={intakeId:id,status:row.status,processingAttempts:row.processing_attempts,
-   resultPath:row.result_path,deliveryMessageId:row.delivery_message_id,lastError:row.last_error};
+   resultPath:row.result_path,deliveryMessageId:row.delivery_message_id,lastError:row.last_error,
+   ...(outboxCase?{delivery:await inspectV2Outbox(id,client),noEmailSent:true}:{})};
   else if(action==='prepare'){
    if(row.status!=='PAID'||row.processing_attempts!==0){status=409;data={error:'FIXTURE_NOT_FRESH'};}
    else{
@@ -138,8 +149,24 @@ export async function POST(req:NextRequest){
     const stored=await head(resultPath,options);
     const readback=await get(resultPath,{...options,access:'private',useCache:false});
     if(stored.size!==workbook!.length||!readback?.stream||!(await bytes(readback.stream,workbook!.length)).equals(workbook!))throw Error('RESULT_READBACK_FAILED');
-    const ok=await markResultReady(id,resultPath,client);status=ok?201:409;data={resultReady:ok,readBackVerified:true};
+    if(outboxCase){
+     const published=await publishV2Result(id,resultPath,randomUUID(),client);
+     if(published==='NOT_READY')throw Error('OUTBOX_RESULT_NOT_READY');
+     status=201;data={resultReady:true,readBackVerified:true,outbox:published,noEmailSent:true};
+    }else{
+     const ok=await markResultReady(id,resultPath,client);status=ok?201:409;data={resultReady:ok,readBackVerified:true};
+    }
    }
+  }else if(action==='outbox_enqueue'){
+   if(row.result_path!==resultPath){status=409;data={error:'OUTBOX_RESULT_NOT_READY'};}
+   else{const enqueued=await publishV2Result(id,resultPath,randomUUID(),client);
+    status=enqueued==='NOT_READY'?409:200;data={outbox:enqueued,noEmailSent:true,send:false};}
+  }else if(action==='outbox_claim'){
+   const claimed=await claimV2Outbox(id,client);status=claimed==='CLAIMED'?200:409;
+   data={outbox:claimed,send:false,noEmailSent:true};
+  }else if(action==='outbox_fail'||action==='outbox_recover'){
+   const quarantined=action==='outbox_fail'?await failV2OutboxBeforeSend(id,client):await recoverV2Outbox(id,client);
+   status=quarantined?200:409;data={quarantined,noAutoRetry:true,send:false,noEmailSent:true};
   }else if(action==='reserve_delivery'){
    const reservation=await reserveDelivery(id,client);
    status=reservation==='NOT_RESERVABLE'?409:200;
@@ -169,7 +196,7 @@ export async function POST(req:NextRequest){
   return reply({synthetic:true,productionTokenUsed:false,...data},status);
  }catch(error){
   await client?.query('ROLLBACK').catch(()=>{});
-  const code=error instanceof Error&&['ISOLATION_REQUIRED','SYNTHETIC_SOURCE_REQUIRED','RESULT_READBACK_FAILED'].includes(error.message)?error.message:'SYNTHETIC_E2E_UNAVAILABLE';
+  const code=error instanceof Error&&['ISOLATION_REQUIRED','SYNTHETIC_SOURCE_REQUIRED','RESULT_READBACK_FAILED','OUTBOX_SCHEMA_NOT_READY','OUTBOX_ROLE_NOT_READY'].includes(error.message)?error.message:'SYNTHETIC_E2E_UNAVAILABLE';
   return reply({error:code},503);
  }finally{client?.release();await pool.end().catch(()=>{});}
 }
