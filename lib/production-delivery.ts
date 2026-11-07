@@ -20,10 +20,13 @@ export async function reportProductionDelivery(b:DeliveryReport,client:Transacti
   if(held||!sendEnabled)return reject(held?'PAYMENT_HELD':'SEND_DISABLED');
   const outbox=await claimV2Outbox(b.intakeId,client),claimed=outbox==='CLAIMED';
   const pair=await inspectV2Outbox(b.intakeId,client);
-  return {status:claimed?200:409,body:{ok:claimed,outbox,send:claimed,deliveryId:pair.ledger?.delivery_id}};
+  const lease=claimed?await client.query('SELECT lease_until FROM public.timeease_fulfillment_outbox WHERE intake_id=$1',[b.intakeId]):null;
+  if(claimed&&!lease?.rows[0]?.lease_until)throw Error('OUTBOX_LEASE_REQUIRED');
+  return {status:claimed?200:409,body:{ok:claimed,outbox,send:claimed,intakeId:b.intakeId,
+   deliveryId:pair.ledger?.delivery_id,leaseUntil:lease?.rows[0]?.lease_until??null}};
  }
  if(b.action==='delivered'){
-  if(!b.deliveryId||!b.messageId||!/^[a-f0-9]{10,64}$/i.test(b.messageId))return reject('BOUND_PROVIDER_RECEIPT_REQUIRED',400);
+  if(typeof b.deliveryId!=='string'||typeof b.messageId!=='string'||!/^[a-f0-9]{10,64}$/i.test(b.messageId))return reject('BOUND_PROVIDER_RECEIPT_REQUIRED',400);
   const pair=await inspectV2Outbox(b.intakeId,client);
   if(pair.ledger?.delivery_id!==b.deliveryId)return reject('DELIVERY_ID_MISMATCH');
   if(held)return reject('PAYMENT_HELD_MANUAL_RECEIPT_REVIEW');

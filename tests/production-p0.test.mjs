@@ -149,3 +149,13 @@ test('proposed migration executes only in local PostgreSQL fixture and grants pu
   assert.equal(Object.values(perms).some(Boolean),false);
  }finally{await d.close();}
 });
+test('sender lease contract echoes the locked PostgreSQL deadline and rejects non-string provider receipts',async()=>{
+ const d=await db();try{
+  const id=await seed(d);await report(d,id,'result_ready',{resultPath:`results-v2/${id}/consolidated.xlsx`});
+  const claim=await report(d,id,'outbox_claim');const wire=JSON.parse(JSON.stringify(claim.body));
+  const actual=(await d.query('SELECT lease_until FROM timeease_fulfillment_outbox WHERE intake_id=$1',[id])).rows[0].lease_until;
+  assert.equal(wire.intakeId,id);assert.equal(Date.parse(wire.leaseUntil),new Date(actual).getTime());
+  assert.ok(Date.parse(wire.leaseUntil)>Date.now());assert.equal(wire.send,true);
+  assert.equal((await report(d,id,'delivered',{deliveryId:wire.deliveryId,messageId:123456789012})).status,400);
+ }finally{await d.close();}
+});
