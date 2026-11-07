@@ -1,3 +1,4 @@
+import {acceptingProductionWork} from "../../../lib/production-release";
 import {blobAccessConfigured,blobAccessOptions} from "../../../lib/blob-access";
 import {previewBlobAccessBlocked} from "../../../lib/preview-blob-guard";
 import {get} from "@vercel/blob";
@@ -12,10 +13,12 @@ import {paymentLedgerSchemaReady} from "../../../lib/payment-ledger-schema-ready
 export const runtime="nodejs";
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export async function POST(req:NextRequest){
+ if(process.env.VERCEL_ENV!=="preview"&&!acceptingProductionWork())return NextResponse.json({error:"PRODUCTION_RELEASE_CLOSED"},{status:503});
  if(previewBlobAccessBlocked(process.env))return NextResponse.json({error:"PREVIEW_BLOB_ISOLATION_REQUIRED"},{status:503,headers:{"Cache-Control":"no-store"}});
  try{
   const {id,testMode}=await req.json();
   const requestedTest=testMode===true;
+  if(requestedTest)return NextResponse.json({error:"INTERNAL_CHECKOUT_DISABLED"},{status:503});
   let authorizedTest=false;
   if(requestedTest){
    const expected=process.env.TIMEEASE_V2_WORKER_SECRET;

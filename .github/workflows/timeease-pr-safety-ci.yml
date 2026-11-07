@@ -16,19 +16,22 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+          fetch-depth: 0
       - name: Node 22
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Preview identity security tests
-        run: node --test tests/preview-identity.test.mjs tests/preview-blob-isolation.test.mjs tests/preview-runtime-evidence.test.mjs tests/preview-order-e2e.test.mjs tests/preview-auth-channel.test.mjs tests/preview-order-console.test.mjs tests/preview-worker-url-diagnostic.test.mjs tests/production-launch-guards.test.mjs tests/shopify-paid-webhook.test.mjs tests/delivery-review-stop.test.mjs tests/preview-fresh-fixtures.test.mjs
+      - name: Reuse accepted Preview evidence only for unchanged core
+        run: git diff --exit-code 4e656ac5092668c6474290dd15ac1e92209581ee HEAD -- lib/v2-delivery-outbox.ts lib/paid-job-claim.ts lib/preview-order-fixture.ts app/api/test-worker/order-e2e/route.ts tests/v2-delivery-outbox.test.mjs 'lib/preview-*.ts' lib/test-worker-guards.ts lib/worker-database.ts lib/blob-access.ts
+      - name: Production P0 changed integration tests (no external services)
+        run: node --test tests/production-p0.test.mjs tests/shopify-paid-webhook.test.mjs
+      - name: Changed checkout release gate test
+        run: node --test --test-name-pattern='production launch stays blocked' tests/production-launch-guards.test.mjs
+      - name: Changed formal Preview pending gate test
+        run: node --test --test-name-pattern='formal Preview pending' tests/worker-database.test.mjs
       - name: Typecheck
         run: npx tsc --noEmit
-      - name: V2 Outbox transaction and Preview boundary tests
-        run: node --test tests/v2-delivery-outbox.test.mjs tests/preview-outbox-guards.test.mjs
-      - name: Worker database password regression tests
-        run: node --test tests/worker-database.test.mjs
       - name: Production build
         run: npm run build

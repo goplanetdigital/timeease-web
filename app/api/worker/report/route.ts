@@ -1,87 +1,32 @@
-import {blobAccessConfigured,blobAccessOptions} from "../../../../lib/blob-access";
-import {previewBlobAccessBlocked} from "../../../../lib/preview-blob-guard";
-import {createHash,timingSafeEqual} from "node:crypto";
-import {NextRequest,NextResponse} from "next/server";
-import {markResultReady,completeReservedDelivery,reserveDelivery,reviewUnconfirmedReceipt,flagForReview} from "../../../../lib/paid-job-claim";
-import {head} from "@vercel/blob";
-export const runtime="nodejs";
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const reply=(data:unknown,status:number)=>NextResponse.json(data,{status,headers:{"Cache-Control":"no-store"}});
-function authorized(req:NextRequest,secret:string){
- const h=req.headers.get("authorization")||"";
- if(!h.startsWith("Bearer ")||h.length>519)return false;
- const a=createHash("sha256").update(h.slice(7)).digest();
- const b=createHash("sha256").update(secret).digest();
- return timingSafeEqual(a,b);
-}
-/** Worker reports only durable, independently produced outputs; no user-facing invocation. */
+import {createHash,timingSafeEqual} from 'node:crypto';
+import {NextRequest,NextResponse} from 'next/server';
+import {head} from '@vercel/blob';
+import {blobAccessOptions} from '../../../../lib/blob-access';
+import {productionReleaseBound,acceptingProductionWork,productionSendEnabled} from '../../../../lib/production-release';
+import {withProductionOrder} from '../../../../lib/production-database';
+import {reportProductionDelivery,type DeliveryReport} from '../../../../lib/production-delivery';
+export const runtime='nodejs';
+const reply=(body:unknown,status:number)=>NextResponse.json(body,{status,headers:{'Cache-Control':'no-store'}});
 export async function POST(req:NextRequest){
- if(previewBlobAccessBlocked(process.env))return NextResponse.json({error:"PREVIEW_BLOB_ISOLATION_REQUIRED"},{status:503,headers:{"Cache-Control":"no-store"}});
- const secret=process.env.TIMEEASE_V2_WORKER_SECRET;
- if(!secret||secret.length<32||process.env.TIMEEASE_V2_PAYMENT_LEDGER_ENABLED!=="true")
-  return reply({error:"WORKER_NOT_CONFIGURED"},503);
- if(!authorized(req,secret))return reply({error:"UNAUTHORIZED"},401);
- const length=req.headers.get("content-length");
- if(length&&(!/^\d+$/.test(length)||Number(length)>4096))return reply({error:"REQUEST_TOO_LARGE"},413);
- if(!req.body)return reply({error:"INVALID_JSON"},400);
- const reader=req.body.getReader();
- const chunks:Buffer[]=[];
- let size=0;
- while(true){
-  const {done,value}=await reader.read();
-  if(done)break;
-  size+=value.byteLength;
-  if(size>4096){
-   await reader.cancel();
-   return reply({error:"REQUEST_TOO_LARGE"},413);
-  }
-  chunks.push(Buffer.from(value));
- }
- let body:unknown;
- try{body=JSON.parse(Buffer.concat(chunks,size).toString("utf8"))}
- catch{return reply({error:"INVALID_JSON"},400)}
- if(!body||typeof body!=="object")return reply({error:"INVALID_BODY"},400);
- const b=body as Record<string,unknown>;
- if(typeof b.intakeId!=="string"||!UUID.test(b.intakeId))return reply({error:"INVALID_INTAKE_ID"},400);
+ if(!productionReleaseBound())return reply({error:'PRODUCTION_RELEASE_CLOSED',send:false},503);
+ const secret=process.env.TIMEEASE_V2_WORKER_SECRET,auth=req.headers.get('authorization')||'';
+ if(!secret||secret.length<32)return reply({error:'WORKER_NOT_CONFIGURED'},503);
+ if(!auth.startsWith('Bearer ')||auth.length>519||!timingSafeEqual(createHash('sha256').update(auth.slice(7)).digest(),createHash('sha256').update(secret).digest()))return reply({error:'UNAUTHORIZED'},401);
+ let raw='';if(!req.body)return reply({error:'INVALID_JSON'},400);
+ const reader=req.body.getReader();const decoder=new TextDecoder();let size=0;
+ while(true){const r=await reader.read();if(r.done)break;size+=r.value.byteLength;
+  if(size>4096){await reader.cancel();return reply({error:'REQUEST_TOO_LARGE'},413);}raw+=decoder.decode(r.value,{stream:true});}
+ raw+=decoder.decode();let b:DeliveryReport;
+ try{b=JSON.parse(raw);}catch{return reply({error:'INVALID_JSON'},400);}
+ if(!b||typeof b!=='object'||Array.isArray(b)||typeof b.intakeId!=='string'||
+  !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(b.intakeId)||
+  Object.keys(b).some(k=>!['intakeId','action','resultPath','deliveryId','messageId'].includes(k)))return reply({error:'INVALID_REPORT'},400);
+ if(b.action==='result_ready'&&!acceptingProductionWork())return reply({error:'NEW_WORK_FROZEN',send:false},503);
  try{
-  if(b.action==="result_ready"&&typeof b.resultPath==="string"){
-   if(b.resultPath!=="results-v2/"+b.intakeId+"/consolidated.xlsx")
-    return reply({error:"INVALID_RESULT_PATH"},400);
-   const storageConfigured=blobAccessConfigured(process.env);
-   if(!storageConfigured)return reply({error:"STORAGE_NOT_CONFIGURED"},503);
-   let blob;
-   try{blob=await head(b.resultPath,await blobAccessOptions(process.env))}
-   catch{return reply({error:"RESULT_NOT_STORED"},409)}
-   if(!blob||blob.size<=0||blob.size>20*1024*1024||
-      blob.contentType!=="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    return reply({error:"INVALID_STORED_RESULT"},409);
-   const ok=await markResultReady(b.intakeId,b.resultPath);
-   return reply({ok},ok?200:409);
-  }
-  if(b.action==="reserve_delivery"){
-   const reservation=await reserveDelivery(b.intakeId);
-   if(reservation==="NOT_RESERVABLE")return reply({ok:false,reservation,send:false,reviewRequired:false},409);
-   const send=reservation==="RESERVED";
-   return reply({ok:true,reservation,send,reviewRequired:!send},200);
-  }
-  if(b.action==="delivered"){
-   const messageId=typeof b.messageId==="string"?b.messageId:"";
-   if(!/^[a-f0-9]{10,64}$/i.test(messageId)){
-    const reviewRequired=await reviewUnconfirmedReceipt(b.intakeId);
-    return reply({error:"INVALID_DELIVERY_RECEIPT",send:false,reviewRequired},reviewRequired?409:400);
-   }
-   const state=await completeReservedDelivery(b.intakeId,messageId);
-   if(state==="REJECTED")return reply({ok:false,send:false},409);
-   return reply({ok:true,idempotent:state==="IDEMPOTENT",send:false},200);
-  }
-  if(b.action==="review"&&typeof b.reason==="string"){
-   const ok=await flagForReview(b.intakeId,b.reason);
-   return reply({ok},ok?200:409);
-  }
-  return reply({error:"INVALID_ACTION"},400);
- }catch(error){
-  if(error instanceof Error&&(error.message==="INVALID_DELIVERY_RECEIPT"||error.message==="INVALID_RESULT_PATH"))
-   return reply({error:error.message},400);
-  return reply({error:"WORKER_LEDGER_UNAVAILABLE"},503);
- }
+  const result=await withProductionOrder(b.intakeId,(client,held)=>reportProductionDelivery(b,client,held,productionSendEnabled(),async path=>{
+   try{const stored=await head(path,await blobAccessOptions(process.env));return stored.size>0&&stored.size<=20*1024*1024&&
+    stored.contentType==='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';}catch{return false;}
+  }));
+  return reply(result.body,result.status);
+ }catch{return reply({error:'OUTBOX_REPORT_UNAVAILABLE',send:false},503);}
 }

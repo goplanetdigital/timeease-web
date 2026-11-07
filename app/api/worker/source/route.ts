@@ -1,10 +1,12 @@
+import {verifyProductionPool} from "../../../../lib/production-database";
+import {productionReleaseBound,acceptingProductionWork} from "../../../../lib/production-release";
 import {blobAccessConfigured,blobAccessOptions} from "../../../../lib/blob-access";
 import {previewBlobAccessBlocked} from "../../../../lib/preview-blob-guard";
 import {createHash,timingSafeEqual} from "node:crypto";
 import {get} from "@vercel/blob";
 import {NextRequest,NextResponse} from "next/server";
 import {Pool} from "pg";
-import {workerDatabaseConnection} from "../../../../lib/worker-database";
+import {productionConnection} from "../../../../lib/production-database";
 export const runtime="nodejs";
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const respond=(body:unknown,status:number)=>NextResponse.json(body,{status,headers:{"Cache-Control":"no-store"}});
@@ -25,6 +27,7 @@ async function readLimited(stream:ReadableStream<Uint8Array>,limit:number):Promi
 }
 /** Private worker can fetch source bytes only for a paid, claimed order. */
 export async function GET(req:NextRequest){
+ if(!productionReleaseBound())return NextResponse.json({error:"PRODUCTION_RELEASE_CLOSED"},{status:503,headers:{"Cache-Control":"no-store"}});
  if(previewBlobAccessBlocked(process.env))return NextResponse.json({error:"PREVIEW_BLOB_ISOLATION_REQUIRED"},{status:503,headers:{"Cache-Control":"no-store"}});
  const secret=process.env.TIMEEASE_V2_WORKER_SECRET;
  const dbUrl=process.env.TIMEEASE_DB_DATABASE_URL;
@@ -43,10 +46,11 @@ export async function GET(req:NextRequest){
  if(!ID.test(intakeId)||!Number.isInteger(index)||index<0||index>99)
   return respond({error:"INVALID_SOURCE_REFERENCE"},400);
  let workerDb:string;
- try{workerDb=workerDatabaseConnection();}catch{return respond({error:"WORKER_DATABASE_ROLE_FORBIDDEN"},503);}
+ try{workerDb=productionConnection("worker");}catch{return respond({error:"WORKER_DATABASE_ROLE_FORBIDDEN"},503);}
  try{
   const blobOptions=await blobAccessOptions(process.env);
   pool??=new Pool({connectionString:workerDb,max:3,connectionTimeoutMillis:5000});
+  await verifyProductionPool(pool);
   const result=await pool.query<{source_manifest_path:string}>(
    "SELECT source_manifest_path FROM timeease_v2_orders WHERE intake_id=$1 AND status='PROCESSING'",
    [intakeId]);

@@ -74,7 +74,7 @@ test('limited-role guard and Production connection selection stay unchanged',()=
  assert.equal(worker.workerDatabaseConnection({VERCEL_ENV:'preview',TIMEEASE_DB_DATABASE_URL:raw}),raw);
 });
 
-test('authenticated Preview pending returns a safe configuration error before constructing Pool',async()=>{
+test('formal Preview pending closes before constructing Pool',async()=>{
  let pools=0;const logs=[];const route={};
  const secret='synthetic-worker-secret-for-local-test-only';
  const env={...preview(base),TIMEEASE_V2_WORKER_SECRET:secret,TIMEEASE_V2_PAYMENT_LEDGER_ENABLED:'true'};
@@ -82,12 +82,12 @@ test('authenticated Preview pending returns a safe configuration error before co
   exports:route,process:{env},URL,Error,console:{error:(...args)=>logs.push(args)},
   require:name=>name==='node:crypto'?crypto:name==='pg'?{Pool:class{constructor(){pools++;throw Error('Pool forbidden');}}}:
    name==='next/server'?{NextResponse:{json:(data,options)=>({data,...options})}}:
-   {workerDatabaseConnection:()=>worker.workerDatabaseConnection(env)}
+   name.includes('production-release')?{productionReleaseBound:()=>false,acceptingProductionWork:()=>false}:name.includes('production-database')?{}:{workerDatabaseConnection:()=>worker.workerDatabaseConnection(env)}
  });
  const result=await route.GET({url:'https://preview.example.invalid/api/worker/pending',
   headers:new Map([['authorization',`Bearer ${secret}`]])});
  assert.equal(result.status,503);
- assert.deepEqual(result.data.error,'WORKER_DATABASE_PASSWORD_MISSING');
+ assert.deepEqual(result.data.error,'PRODUCTION_RELEASE_CLOSED');
  assert.equal(pools,0);assert.deepEqual(logs,[]);
  assert.equal(JSON.stringify(result).includes(base),false);
  assert.equal(JSON.stringify(result).includes(secret),false);

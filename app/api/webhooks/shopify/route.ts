@@ -1,3 +1,7 @@
+import {productionReleaseBound,acceptingProductionWork} from "../../../../lib/production-release";
+import {productionTransaction} from "../../../../lib/production-database";
+import {holdShopifyPayment} from "../../../../lib/payment-reversal";
+import {shopifyPaymentState} from "../../../../lib/shopify-payment-state";
 import {blobAccessConfigured,blobAccessOptions} from "../../../../lib/blob-access";
 import {previewBlobAccessBlocked} from "../../../../lib/preview-blob-guard";
 import {createHmac,timingSafeEqual} from "node:crypto";
@@ -15,10 +19,10 @@ function authenticated(raw:string,signature:string|null,secret:string):boolean {
  return supplied.length===expected.length && timingSafeEqual(supplied,expected);
 }
 
-// Isolated, fail-closed verification endpoint. It deliberately does NOT mark
-// an intake paid, start a worker, or accept a client-provided order status.
+// Authenticated payment authority; never starts a Worker or sends mail.
 export async function POST(req:NextRequest){
  if(previewBlobAccessBlocked(process.env))return NextResponse.json({error:"PREVIEW_BLOB_ISOLATION_REQUIRED"},{status:503,headers:{"Cache-Control":"no-store"}});
+ if(!productionReleaseBound())return NextResponse.json({error:"PRODUCTION_RELEASE_CLOSED"},{status:503});
  const secret=process.env.SHOPIFY_WEBHOOK_SECRET;
  if(!secret)return NextResponse.json({error:"WEBHOOK_NOT_CONFIGURED"},{status:503});
  const length=req.headers.get("content-length");
@@ -43,18 +47,21 @@ export async function POST(req:NextRequest){
  // Log only authenticated delivery metadata; never log payloads, signatures, or customer data.
  console.info("shopify_webhook_signature_verified",{topic:req.headers.get("x-shopify-topic")||"missing"});
  const expectedShop=process.env.SHOPIFY_SHOP_DOMAIN;
- if(expectedShop && req.headers.get("x-shopify-shop-domain")!==expectedShop)
+ if(!expectedShop)return NextResponse.json({error:"SHOP_DOMAIN_NOT_CONFIGURED"},{status:503});
+ if(req.headers.get("x-shopify-shop-domain")!==expectedShop)
   return NextResponse.json({error:"UNEXPECTED_SHOP"},{status:403});
  const topic=req.headers.get("x-shopify-topic");
- if(topic!=="orders/paid")
-  return NextResponse.json({error:"UNSUPPORTED_WEBHOOK_TOPIC"},{status:422});
  let order:unknown;
  try{order=JSON.parse(raw)}catch{return NextResponse.json({error:"INVALID_JSON"},{status:400})}
- if(!order||typeof order!=="object"||!("id" in order)||!("financial_status" in order))
-  return NextResponse.json({error:"INVALID_ORDER"},{status:400});
- const payload=order as {id:unknown;financial_status:unknown};
- if((typeof payload.id!=="number"&&typeof payload.id!=="string")||payload.financial_status!=="paid")
-  return NextResponse.json({error:"ORDER_NOT_PAID"},{status:422});
+ if(!order||typeof order!=="object"||Array.isArray(order))return NextResponse.json({error:"INVALID_ORDER"},{status:400});
+ const state=shopifyPaymentState(topic,order as Record<string,unknown>);
+ if(state.kind==='REJECT')return NextResponse.json({error:"ORDER_NOT_LIVE_PAID_OR_SUPPORTED_REVERSAL"},{status:422});
+ if(state.kind==='HOLD'){
+  try{const status=await productionTransaction('payment',client=>holdShopifyPayment(state.orderId,expectedShop,state.reason,client));
+   return NextResponse.json({status,send:false},{headers:{"Cache-Control":"no-store"}});
+  }catch{return NextResponse.json({error:"PAYMENT_HOLD_UNAVAILABLE"},{status:503});}
+ }
+ if(!acceptingProductionWork())return NextResponse.json({error:"NEW_WORK_FROZEN"},{status:503});
  const bindingSecret=process.env.TIMEEASE_CHECKOUT_BINDING_SECRET;
  if(!bindingSecret)return NextResponse.json({error:"CHECKOUT_BINDING_NOT_CONFIGURED"},{status:503});
  const binding=verifyBoundShopifyOrder(order as Parameters<typeof verifyBoundShopifyOrder>[0],bindingSecret);
@@ -70,10 +77,10 @@ export async function POST(req:NextRequest){
   const contact=order as {email?:unknown;contact_email?:unknown};
   const candidate=typeof contact.email==="string"?contact.email:contact.contact_email;
   const email=typeof candidate==="string"&&candidate.length<=320?candidate:null;
-  const status=await recordVerifiedPayment(binding,String(payload.id),shop,email);
-  return NextResponse.json({status,delivery:"PENDING"},{headers:{"Cache-Control":"no-store"}});
+  const status=await recordVerifiedPayment(binding,state.orderId,shop,email);
+  return NextResponse.json({status,delivery:status==="PAYMENT_HELD"?"HELD":"RECORDED_NO_SEND"},{headers:{"Cache-Control":"no-store"}});
  }catch(error){
-  console.error("paid_order_ledger_failed",error instanceof Error?error.message:"unknown");
+  console.error("paid_order_ledger_failed");
   return NextResponse.json({error:"PAID_ORDER_LEDGER_UNAVAILABLE"},{status:503});
  }
 }

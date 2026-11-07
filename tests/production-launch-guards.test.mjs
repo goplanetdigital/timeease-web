@@ -6,7 +6,8 @@ import ts from 'typescript';
 
 const compile=path=>ts.transpileModule(readFileSync(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
 const claim={};vm.runInNewContext(compile('lib/paid-job-claim.ts'),{exports:claim,process:{env:{}},require:()=>({Pool:class{constructor(){throw Error('Unexpected ambient database');}}})});
-const readiness={};vm.runInNewContext(compile('lib/checkout-readiness.ts'),{exports:readiness});
+const release={};vm.runInNewContext(compile('lib/production-release.ts'),{exports:release});
+const readiness={};vm.runInNewContext(compile('lib/checkout-readiness.ts'),{exports:readiness,require:()=>release});
 const id='123e4567-e89b-42d3-a456-426614174000';
 const path=`results-v2/${id}/consolidated.xlsx`;
 const receipt='1a179272ca7f00df';
@@ -60,7 +61,7 @@ test('production launch stays blocked without live webhook and worker proof',()=
  assert.equal(preview.includes('PREVIEW_ISOLATION'),true);
  for(const name of names)assert.equal(preview.includes(name),true);
  const configured={
-  VERCEL_ENV:'production',TIMEEASE_V2_CHECKOUT_ENABLED:'true',TIMEEASE_V2_DELIVERY_VERIFIED:'true',
+  VERCEL_ENV:'production',VERCEL_PROJECT_ID:release.PRODUCTION_PROJECT,VERCEL_GIT_COMMIT_SHA:'a'.repeat(40),TIMEEASE_RELEASE_COMMIT_SHA:'a'.repeat(40),TIMEEASE_V2_OUTBOX_ENABLED:'true',TIMEEASE_RELEASE_ACCEPTING_WORK:'true',TIMEEASE_RELEASE_SEND_ENABLED:'true',TIMEEASE_V2_CHECKOUT_ENABLED:'true',TIMEEASE_V2_DELIVERY_VERIFIED:'true',
   TIMEEASE_V2_PAYMENT_LEDGER_ENABLED:'true',TIMEEASE_DB_DATABASE_URL:'configured',BLOB_READ_WRITE_TOKEN:'configured',
   SHOPIFY_WEBHOOK_SECRET:'configured',TIMEEASE_CHECKOUT_BINDING_SECRET:'configured',SHOPIFY_SHOP_DOMAIN:'example.myshopify.com',
   TIMEEASE_V2_WORKER_SECRET:'synthetic-worker-test-value-with-32-characters'

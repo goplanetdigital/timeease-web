@@ -1,7 +1,9 @@
+import {productionReleaseBound,acceptingProductionWork} from "../../../../lib/production-release";
 import {createHash,timingSafeEqual} from "node:crypto";
 import {NextRequest,NextResponse} from "next/server";
 export const runtime="nodejs";
 export async function GET(req:NextRequest){
+ if(!productionReleaseBound())return NextResponse.json({error:"PRODUCTION_RELEASE_CLOSED"},{status:503,headers:{"Cache-Control":"no-store"}});
  const headers={"Cache-Control":"no-store"};
  const secret=process.env.TIMEEASE_V2_WORKER_SECRET;
  if(!secret||secret.length<32)return NextResponse.json({error:"WORKER_NOT_CONFIGURED"},{status:503,headers});

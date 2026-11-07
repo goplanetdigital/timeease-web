@@ -1,3 +1,4 @@
+import {acceptingProductionWork,productionSendEnabled} from "./production-release";
 /**
  * Single fail-closed source of truth for checkout readiness.
  * The operator must explicitly enable checkout AND attest delivery testing.
@@ -18,7 +19,7 @@ export function checkoutTestPrerequisitesReady(env:NodeJS.ProcessEnv=process.env
 }
 
 export function checkoutIsEnabled(env:NodeJS.ProcessEnv=process.env):boolean{
- return env.TIMEEASE_V2_CHECKOUT_ENABLED==="true" &&
+ return acceptingProductionWork(env)&&productionSendEnabled(env)&&env.TIMEEASE_V2_CHECKOUT_ENABLED==="true" &&
  env.TIMEEASE_V2_DELIVERY_VERIFIED==="true" &&
  env.TIMEEASE_V2_PAYMENT_LEDGER_ENABLED==="true" &&
  Boolean(env.TIMEEASE_DB_DATABASE_URL) &&
@@ -31,6 +32,8 @@ export function checkoutIsEnabled(env:NodeJS.ProcessEnv=process.env):boolean{
 /** Names only. External webhook and worker proof stay blocked until independently verified. */
 export function productionLaunchBlockers(env:NodeJS.ProcessEnv,schemaReady:boolean):string[]{
  const blockers:string[]=[];
+ if(!acceptingProductionWork(env))blockers.push("RELEASE_NOT_ACCEPTING_WORK");
+ if(!productionSendEnabled(env))blockers.push("RELEASE_SEND_DISABLED");
  if(env.VERCEL_ENV==="preview"||env.TIMEEASE_ISOLATED_TEST_MODE==="true")blockers.push("PREVIEW_ISOLATION");
  if(env.TIMEEASE_V2_CHECKOUT_ENABLED!=="true")blockers.push("TIMEEASE_V2_CHECKOUT_ENABLED");
  if(env.TIMEEASE_V2_DELIVERY_VERIFIED!=="true")blockers.push("TIMEEASE_V2_DELIVERY_VERIFIED");

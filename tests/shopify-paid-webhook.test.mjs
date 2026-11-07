@@ -38,17 +38,23 @@ function harness(){
    return {rowCount:found.length,rows:found};
   }
  }
+ let sqlPool;
+ const tx={productionTransaction:async(p,fn)=>fn(sqlPool??=(new Pool())),lockPayment:async()=>{},paymentHeld:async()=>false};
  const env={VERCEL_ENV:'development',SHOPIFY_WEBHOOK_SECRET:webhookSecret,TIMEEASE_CHECKOUT_BINDING_SECRET:bindingSecret,SHOPIFY_SHOP_DOMAIN:shop,TIMEEASE_V2_PAYMENT_LEDGER_ENABLED:'true',TIMEEASE_DB_DATABASE_URL:'postgresql://timeease_ledger_writer:synthetic@example.internal/neondb'};
  let intakeReads=0;
  const route=load('app/api/webhooks/shopify/route.ts',name=>{
   if(name==='pg')return {Pool};
+  if(name.includes('production-release'))return {productionReleaseBound:()=>true,acceptingProductionWork:()=>true};
+  if(name.includes('production-database'))return tx;
+  if(name.includes('payment-reversal'))return {};
+  if(name.includes('shopify-payment-state'))return load('lib/shopify-payment-state.ts',()=>({}));
   if(name.includes('crypto'))return crypto;
   if(name==='next/server')return {NextResponse:{json:(data,options={})=>({data,status:options.status||200,headers:options.headers})}};
   if(name.includes('preview-blob-guard'))return {previewBlobAccessBlocked:()=>false};
   if(name.includes('blob-access'))return {blobAccessConfigured:()=>true,blobAccessOptions:async()=>({token:'synthetic-blob'})};
   if(name.includes('shopify-bound-order'))return bound;
   if(name.includes('verify-stored-intake'))return {verifyStoredIntake:async()=>{intakeReads++;return true;}};
-  if(name.includes('paid-order-ledger'))return load('lib/paid-order-ledger.ts',dep=>dep==='pg'?{Pool}:(()=>{throw new Error(dep);})(),env);
+  if(name.includes('paid-order-ledger'))return load('lib/paid-order-ledger.ts',dep=>dep.includes('production-database')?tx:(()=>{throw new Error(dep);})(),env);
   throw new Error(name);
  },env);
  return {route,rows,queries,get pools(){return pools;},get intakeReads(){return intakeReads;}};
@@ -58,7 +64,7 @@ function request(raw,signature,headers={}){
  return {headers:{get:name=>({ 'content-length':String(bytes.length),'x-shopify-hmac-sha256':signature,'x-shopify-shop-domain':shop,'x-shopify-topic':'orders/paid',...headers }[name.toLowerCase()]??null)},
   body:{getReader(){let sent=false;return {async read(){if(sent)return {done:true};sent=true;return {done:false,value:bytes};},async cancel(){}};}}};
 }
-const order=(id=12345,price='1.00',status='paid')=>JSON.stringify({id,financial_status:status,currency:'USD',total_price:price,email:'synthetic@example.com',line_items:[{variant_id:51393328480503,quantity:1}],note_attributes:[{name:'_timeease_checkout_binding',value:token}]});
+const order=(id=12345,price='1.00',status='paid')=>JSON.stringify({id,test:false,financial_status:status,currency:'USD',total_price:price,email:'synthetic@example.com',line_items:[{variant_id:51393328480503,quantity:1}],note_attributes:[{name:'_timeease_checkout_binding',value:token}]});
 const sign=raw=>createHmac('sha256',webhookSecret).update(raw).digest('base64');
 
 test('synthetic paid webhook verifies signature and binding, then records one replay as the same order',async()=>{
@@ -66,7 +72,7 @@ test('synthetic paid webhook verifies signature and binding, then records one re
  const raw=order();
  const first=await app.route.POST(request(raw,sign(raw)));
  const second=await app.route.POST(request(raw,sign(raw)));
- assert.equal(first.status,200);assert.equal(first.data.status,'CREATED');assert.equal(first.data.delivery,'PENDING');
+ assert.equal(first.status,200);assert.equal(first.data.status,'CREATED');assert.equal(first.data.delivery,'RECORDED_NO_SEND');
  assert.equal(second.status,200);assert.equal(second.data.status,'ALREADY_RECORDED');
  assert.equal(app.rows.length,1);assert.equal(app.pools,1);assert.equal(app.intakeReads,2);
 });
@@ -104,9 +110,11 @@ test('worker database connections reject administrator roles before opening a po
   if(name==='pg')return {Pool:class{constructor(){pools++;}}};
   if(name.includes('crypto'))return crypto;
   if(name==='next/server')return {NextResponse:{json:(data,options={})=>({data,status:options.status||200})}};
+  if(name.includes('production-release'))return {productionReleaseBound:()=>false,acceptingProductionWork:()=>false};
+  if(name.includes('production-database'))return {};
   if(name.includes('worker-database'))return role;
   throw new Error(name);
  },env);
  const result=await pending.GET({url:'https://example.test/api/worker/pending',headers:{get:name=>name.toLowerCase()==='authorization'?`Bearer ${secret}`:null}});
- assert.equal(result.status,503);assert.equal(result.data.error,'WORKER_DATABASE_ROLE_FORBIDDEN');assert.equal(pools,0);
+ assert.equal(result.status,503);assert.equal(result.data.error,'PRODUCTION_RELEASE_CLOSED');assert.equal(pools,0);
 });

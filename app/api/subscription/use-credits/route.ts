@@ -1,3 +1,4 @@
+import {stripeBillingReleased} from "../../../../lib/production-release";
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -73,6 +74,7 @@ async function readBody(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if(!stripeBillingReleased())return NextResponse.json({error:"STRIPE_BILLING_NOT_RELEASED"},{status:503});
   try {
     const body = await readBody(request);
     const email = String(body?.email || "").trim().toLowerCase();

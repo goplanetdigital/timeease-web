@@ -1,3 +1,4 @@
+import {acceptingProductionWork} from "../../../lib/production-release";
 import {blobAccessConfigured,blobAccessOptions} from "../../../lib/blob-access";
 import {previewBlobAccessBlocked} from "../../../lib/preview-blob-guard";
 import {put,del} from "@vercel/blob";
@@ -10,6 +11,7 @@ import {calculateQuote,type TimeEaseService} from "../../../lib/upload-first-pri
 export const runtime="nodejs";
 const ACCEPT:Record<TimeEaseService,string[]>={invoice:[".pdf"],consolidation:[".pdf"],catalogue:[".csv",".xlsx"],resume:[".pdf",".docx",".txt"]};
 export async function POST(req:NextRequest){
+ if(process.env.VERCEL_ENV!=="preview"&&!acceptingProductionWork())return NextResponse.json({error:"PRODUCTION_RELEASE_CLOSED"},{status:503});
  if(previewBlobAccessBlocked(process.env))return NextResponse.json({error:"PREVIEW_BLOB_ISOLATION_REQUIRED"},{status:503,headers:{"Cache-Control":"no-store"}});
  try{
   if(!blobAccessConfigured(process.env))return NextResponse.json({error:"STORAGE_NOT_CONFIGURED"},{status:503});

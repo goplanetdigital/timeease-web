@@ -1,13 +1,16 @@
+import {verifyProductionPool} from "../../../../lib/production-database";
+import {productionReleaseBound,acceptingProductionWork} from "../../../../lib/production-release";
 import {blobAccessConfigured,blobAccessOptions} from "../../../../lib/blob-access";
 import {previewBlobAccessBlocked} from "../../../../lib/preview-blob-guard";
 import {NextRequest,NextResponse} from 'next/server';
 import {Pool} from 'pg';
-import {workerDatabaseConnection} from '../../../../lib/worker-database';
+import {productionConnection} from '../../../../lib/production-database';
 import {get} from '@vercel/blob';
 import {createHash,timingSafeEqual} from 'node:crypto';
 export const runtime='nodejs';
 let pool:Pool|undefined;
 export async function GET(req:NextRequest){
+ if(!productionReleaseBound())return NextResponse.json({error:"PRODUCTION_RELEASE_CLOSED"},{status:503,headers:{"Cache-Control":"no-store"}});
  if(previewBlobAccessBlocked(process.env))return NextResponse.json({error:"PREVIEW_BLOB_ISOLATION_REQUIRED"},{status:503,headers:{"Cache-Control":"no-store"}});
  const secret=process.env.TIMEEASE_V2_WORKER_SECRET;
  const db=process.env.TIMEEASE_DB_DATABASE_URL;
@@ -19,10 +22,11 @@ export async function GET(req:NextRequest){
  const id=new URL(req.url).searchParams.get('intakeId')||'';
  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))return NextResponse.json({error:'INVALID_ID'},{status:400});
  let workerDb:string;
- try{workerDb=workerDatabaseConnection();}catch{return NextResponse.json({error:'WORKER_DATABASE_ROLE_FORBIDDEN'},{status:503,headers:{'Cache-Control':'no-store'}});}
+ try{workerDb=productionConnection("worker");}catch{return NextResponse.json({error:'WORKER_DATABASE_ROLE_FORBIDDEN'},{status:503,headers:{'Cache-Control':'no-store'}});}
  try{
   const blobOptions=await blobAccessOptions(process.env);
   pool??=new Pool({connectionString:workerDb,max:3,connectionTimeoutMillis:5000});
+  await verifyProductionPool(pool);
   const path='intake-v2/'+id+'/manifest.json';
   const row=await pool.query('SELECT intake_id FROM timeease_v2_orders WHERE intake_id=$1 AND source_manifest_path=$2 AND status=$3',[id,path,'PROCESSING']);
   if(row.rowCount!==1)return NextResponse.json({error:'NOT_CLAIMED'},{status:409});

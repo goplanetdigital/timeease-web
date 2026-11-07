@@ -1,3 +1,4 @@
+import {productionReleaseBound,acceptingProductionWork,productionSendEnabled} from "../../../lib/production-release";
 import {blobAccessConfigured} from "../../../lib/blob-access";
 import {previewRuntimeEvidence} from "../../../lib/preview-runtime-evidence";
 import {previewBlobAccessBlocked} from "../../../lib/preview-blob-guard";
@@ -20,6 +21,7 @@ export async function GET(){
  const checkoutEnabled=checkoutIsEnabled()&&paymentLedgerSchemaVerified;
  return NextResponse.json({
   service:"timeease-upload-first",
+  releaseBound:productionReleaseBound(),acceptingWork:acceptingProductionWork(),sendEnabled:productionSendEnabled(),
   ...(previewIsolation?{previewIsolation}:{}),
   privateStorageConfigured,
   intakeEnabled:privateStorageConfigured&&!previewBlobAccessBlocked(process.env),
