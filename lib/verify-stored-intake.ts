@@ -6,9 +6,9 @@ import {resolveShopifyVariant} from "./shopify-variants";
 
 export async function verifyStoredIntake(
  binding:CheckoutTokenPayload,
- token:string
+ token:string|{token?:string;storeId?:string}
 ):Promise<boolean>{
- const file=await get("intake-v2/"+binding.intakeId+"/manifest.json",{access:"private",token});
+ const file=await get("intake-v2/"+binding.intakeId+"/manifest.json",{access:"private",...(typeof token==="string"?{token}:token)});
  if(!file?.stream)return false;
  // A private manifest is expected to be small. Reject oversized or malformed
  // content while streaming instead of buffering an unbounded blob.

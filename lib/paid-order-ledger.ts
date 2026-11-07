@@ -1,26 +1,24 @@
-import {Pool} from "pg";
+import {productionTransaction,lockPayment,paymentHeld,type TransactionClient} from "./production-database";
 import type {CheckoutTokenPayload} from "./checkout-binding.ts";
 
-let pool:Pool|undefined;
-function database():Pool{
- const connectionString=process.env.TIMEEASE_DB_DATABASE_URL;
- if(!connectionString)throw new Error("PAYMENT_DATABASE_NOT_CONFIGURED");
- return pool??=new Pool({connectionString,max:3,connectionTimeoutMillis:5000});
-}
 export async function recordVerifiedPayment(
  binding:CheckoutTokenPayload,
  orderId:string,
  shop:string,
- email:string|null
-):Promise<"CREATED"|"ALREADY_RECORDED">{
+ email:string|null,
+ client?:TransactionClient
+):Promise<"CREATED"|"ALREADY_RECORDED"|"PAYMENT_HELD">{
  if(!/^[0-9]+$/.test(orderId)||!shop||!binding.intakeId)throw new Error("INVALID_VERIFIED_ORDER");
+ if(!client)return productionTransaction("payment",c=>recordVerifiedPayment(binding,orderId,shop,email,c));
+ await lockPayment(shop,orderId,client);
+ if(await paymentHeld(shop,orderId,client))return "PAYMENT_HELD";
  const sql=`INSERT INTO timeease_v2_orders
  (intake_id,shopify_order_id,shopify_shop_domain,variant_id,amount_usd,customer_email,source_manifest_path,status)
  VALUES ($1,$2,$3,$4,$5,$6,$7,'PAID')
  ON CONFLICT DO NOTHING RETURNING intake_id`;
  const args=[binding.intakeId,orderId,shop,binding.variantId,binding.amountUsd,email,
   "intake-v2/"+binding.intakeId+"/manifest.json"];
- const db=database();
+ const db=client;
  const inserted=await db.query(sql,args);
  if(inserted.rowCount===1)return "CREATED";
  const existing=await db.query(

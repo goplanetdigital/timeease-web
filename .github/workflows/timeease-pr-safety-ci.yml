@@ -16,12 +16,25 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+          fetch-depth: 0
       - name: Node 22
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Reuse accepted Preview evidence only for unchanged core
+        run: git diff --exit-code 4e656ac5092668c6474290dd15ac1e92209581ee HEAD -- lib/v2-delivery-outbox.ts lib/paid-job-claim.ts lib/preview-order-fixture.ts app/api/test-worker/order-e2e/route.ts tests/v2-delivery-outbox.test.mjs 'lib/preview-*.ts' lib/test-worker-guards.ts lib/worker-database.ts lib/blob-access.ts
+      - name: Reuse unchanged Production payment and release guards
+        run: git diff --exit-code 3fcda0a30bb13e3f07e1ae65d656fc1ee2c38051 HEAD -- app lib/production-release.ts lib/production-database.ts lib/payment-reversal.ts lib/paid-order-ledger.ts lib/shopify-payment-state.ts lib/checkout-readiness.ts lib/payment-ledger-schema-ready.ts lib/worker-database.ts
+      - name: Changed formal delivery response and lease binding
+        run: node --test --test-name-pattern='formal report publishes|sender lease contract' tests/production-p0.test.mjs
+      - name: New n8n sender receipt and monitoring contract
+        run: node --test tests/n8n-outbox-contract.test.mjs
+      - name: Verify n8n source artifact matches shared contract
+        run: |
+          node scripts/build-n8n-preview-contract.mjs
+          git diff --exit-code -- workflows/preview-outbox-contract.sdk.js
       - name: Typecheck
         run: npx tsc --noEmit
       - name: Production build

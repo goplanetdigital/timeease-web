@@ -1,3 +1,4 @@
+import {stripeBillingReleased} from "../../../../lib/production-release";
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -83,6 +84,7 @@ async function resetSubscriptionCredits(subscriptionId: string) {
 }
 
 export async function POST(request: NextRequest) {
+  if(!stripeBillingReleased())return NextResponse.json({error:"STRIPE_BILLING_NOT_RELEASED"},{status:503});
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!secret) {
     return NextResponse.json({ error: "Webhook not configured." }, { status: 503 });
