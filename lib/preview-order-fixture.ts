@@ -1,4 +1,5 @@
 import {isIsolatedPreview,isAllowedTestRecipient} from './test-worker-guards';
+import {MOCK_DELIVERY_CASE,MOCK_DELIVERY_ID,MOCK_DELIVERY_RECIPIENT} from './preview-mock-delivery';
 export const PREVIEW_ORDER_BRANCH='feature/isolated-worker-diagnostics-20261026';
 export const TEST_RECIPIENT='jcaiworker@gmail.com';
 export const ORDER_FIXTURES={
@@ -10,6 +11,7 @@ export const ORDER_FIXTURES={
  outbox_persist:'b8f0b839-e0ff-4ef5-bf90-c32513c83fbf',
  outbox_failure:'712fb48a-03e8-470f-82fe-e8a5dbe12b7e',
  outbox_timeout:'52c899ce-3ea0-4d03-b9df-7e5ae2d83d99',
+ outbox_mock_delivery:MOCK_DELIVERY_ID,
 } as const;
 export type PreviewFixtureCase=keyof typeof ORDER_FIXTURES;
 export function isPreviewFixtureCase(value:unknown):value is PreviewFixtureCase{
@@ -19,7 +21,7 @@ export function isFreshPreviewFixture(kind:PreviewFixtureCase):boolean{
  return kind==='race'||kind==='reservation'||kind==='delivery_v2';
 }
 export function isOutboxPreviewFixture(kind:PreviewFixtureCase):boolean{
- return kind==='outbox_persist'||kind==='outbox_failure'||kind==='outbox_timeout';
+ return kind==='outbox_persist'||kind==='outbox_failure'||kind==='outbox_timeout'||kind===MOCK_DELIVERY_CASE;
 }
 export function isRecoveryPreviewFixture(id:string):boolean{
  return [ORDER_FIXTURES.failure,ORDER_FIXTURES.race,ORDER_FIXTURES.delivery_v2].some(fixed=>fixed===id);
@@ -36,14 +38,14 @@ export function previewOrderEnvironment(env:Record<string,string|undefined>,host
 }
 export function fixtureMatches(row:Record<string,unknown>,kind:keyof typeof ORDER_FIXTURES):boolean{
  const id=ORDER_FIXTURES[kind];
- const reference=isOutboxPreviewFixture(kind)
+ const reference=kind===MOCK_DELIVERY_CASE?`preview-pr20-mock-20261108:${id}`:isOutboxPreviewFixture(kind)
   ?`preview-pr20-outbox-20261107:${kind}:${id}`
   :isFreshPreviewFixture(kind)
   ?`preview-pr20-20261106-r1:${kind==='delivery_v2'?'delivery':kind}:${id}`
   :`preview-e2e:${kind}:${id}`;
  return row.intake_id===id&&row.shopify_order_id===reference&&
   row.shopify_shop_domain==='preview.invalid'&&row.variant_id==='synthetic-invoice'&&
-  Number(row.amount_usd)===1&&row.customer_email===TEST_RECIPIENT&&
+  Number(row.amount_usd)===1&&row.customer_email===(kind===MOCK_DELIVERY_CASE?MOCK_DELIVERY_RECIPIENT:TEST_RECIPIENT)&&
   row.source_manifest_path===`intake-v2/${id}/manifest.json`;
 }
 /** Same small synthetic invoice format as the existing n8n PDF acceptance fixture. */

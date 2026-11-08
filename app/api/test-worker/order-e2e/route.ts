@@ -5,14 +5,15 @@ import {put,get,head,del,list} from '@vercel/blob';
 import {previewBlobOptions} from '../../../../lib/preview-runtime-evidence';
 import {claimPaidJob,markResultReady,markDelivered,flagForReview,reserveDelivery} from '../../../../lib/paid-job-claim';
 import {previewAuthEnvironment,previewOrderEnvironment,fixtureMatches,ORDER_FIXTURES,TEST_RECIPIENT,syntheticInvoicePdf,isPreviewFixtureCase,isFreshPreviewFixture,isRecoveryPreviewFixture,isOutboxPreviewFixture} from '../../../../lib/preview-order-fixture';
-import {requireV2OutboxSchema,publishV2Result,claimV2Outbox,recoverV2Outbox,failV2OutboxBeforeSend,inspectV2Outbox} from '../../../../lib/v2-delivery-outbox';
+import {requireV2OutboxSchema,publishV2Result,claimV2Outbox,completeV2Outbox,recoverV2Outbox,failV2OutboxBeforeSend,inspectV2Outbox} from '../../../../lib/v2-delivery-outbox';
+import {MOCK_DELIVERY_CASE,mockReceiptMatches} from '../../../../lib/preview-mock-delivery';
 import {isIsolatedNeonEndpoint,PREVIEW_NEON_BRANCH,PREVIEW_NEON_PROJECT} from '../../../../lib/test-worker-guards';
 import {recoverPreviewFailure} from '../../../../lib/preview-order-recovery';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 const MAX_BODY=1500000;
 const reply=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{'Cache-Control':'no-store'}});
-const ACTIONS=['auth_check','status','prepare','claim','source','result','delivered','review','recover','cleanup','reserve_delivery','outbox_enqueue','outbox_claim','outbox_fail','outbox_recover'];
+const ACTIONS=['auth_check','status','prepare','claim','source','result','delivered','review','recover','cleanup','reserve_delivery','outbox_enqueue','outbox_claim','outbox_fail','outbox_recover','mock_receipt'];
 /** Diagnostic only: no DB, Blob, payment or email side effects; POST remains authenticated. */
 export async function GET(req:NextRequest){
  if(!previewOrderEnvironment(process.env,new URL(req.url).hostname))return reply({error:'PREVIEW_TEST_ONLY'},404);
@@ -64,7 +65,8 @@ export async function POST(req:NextRequest){
  const {action}=body,kind=body.case??'delivery';
  if(!isPreviewFixtureCase(kind))return reply({error:'INVALID_FIXTURE'},400);
  const outboxCase=isOutboxPreviewFixture(kind);
- if(outboxCase&&!['status','prepare','claim','source','result','outbox_enqueue','outbox_claim','outbox_fail','outbox_recover'].includes(action))
+ if(action==='mock_receipt'&&kind!==MOCK_DELIVERY_CASE)return reply({error:'EXACT_MOCK_FIXTURE_REQUIRED'},400);
+ if(outboxCase&&!['status','prepare','claim','source','result','outbox_enqueue','outbox_claim','outbox_fail','outbox_recover','mock_receipt'].includes(action))
   return reply({error:'OUTBOX_NO_EMAIL_ACCEPTANCE_ONLY'},400);
  if(action.startsWith('outbox_')&&!outboxCase)return reply({error:'OUTBOX_FIXTURE_REQUIRED'},400);
  if(action==='outbox_recover'&&kind!=='outbox_timeout')return reply({error:'OUTBOX_TIMEOUT_FIXTURE_REQUIRED'},400);
@@ -74,8 +76,9 @@ export async function POST(req:NextRequest){
  if(isFreshPreviewFixture(kind)&&action==='result'&&kind!=='reservation')return reply({error:'RESERVATION_FIXTURE_REQUIRED'},400);
  if(action==='reserve_delivery'&&kind!=='reservation')return reply({error:'RESERVATION_FIXTURE_REQUIRED'},400);
  if(action==='recover'&&!isRecoveryPreviewFixture(ORDER_FIXTURES[kind]))return reply({error:'FAILURE_FIXTURE_REQUIRED'},400);
- const keys=action==='result'?['action','case','xlsxBase64']:action==='delivered'?['action','case','messageId']:['action','case'];
+ const keys=action==='mock_receipt'?['action','case','deliveryId','messageId']:action==='result'?['action','case','xlsxBase64']:action==='delivered'?['action','case','messageId']:['action','case'];
  if(Object.keys(body).some(k=>!keys.includes(k)))return reply({error:'UNEXPECTED_INPUT'},400);
+ if(action==='mock_receipt'&&!mockReceiptMatches(body.deliveryId,body.messageId))return reply({error:'SYNTHETIC_BOUND_RECEIPT_REQUIRED'},400);
  let workbook:Buffer|undefined;
  if(action==='result'){
   if(typeof body.xlsxBase64!=='string'||!body.xlsxBase64||body.xlsxBase64.length>1400000)return reply({error:'INVALID_XLSX'},400);
@@ -164,6 +167,16 @@ export async function POST(req:NextRequest){
   }else if(action==='outbox_claim'){
    const claimed=await claimV2Outbox(id,client);status=claimed==='CLAIMED'?200:409;
    data={outbox:claimed,send:false,noEmailSent:true};
+   if(kind===MOCK_DELIVERY_CASE){
+    const pair=await inspectV2Outbox(id,client);
+    const lease=(await client.query('SELECT lease_until FROM public.timeease_fulfillment_outbox WHERE intake_id=$1',[id])).rows[0]?.lease_until;
+    data={ok:claimed==='CLAIMED',outbox:claimed,send:claimed==='CLAIMED',intakeId:id,deliveryId:pair.ledger?.delivery_id,leaseUntil:lease,mockProviderOnly:true,noEmailSent:true};
+   }
+  }else if(action==='mock_receipt'){
+   const pair=await inspectV2Outbox(id,client);
+   if(pair.ledger?.delivery_id!==body.deliveryId){status=409;data={error:'DELIVERY_ID_MISMATCH',send:false};}
+   else{const completed=await completeV2Outbox(id,body.messageId as string,client);status=completed==='REJECTED'?409:200;
+    data={delivered:completed!=='REJECTED',idempotent:completed==='IDEMPOTENT',deliveryId:body.deliveryId,mockProviderOnly:true,emailSent:false,send:false};}
   }else if(action==='outbox_fail'||action==='outbox_recover'){
    const quarantined=action==='outbox_fail'?await failV2OutboxBeforeSend(id,client):await recoverV2Outbox(id,client);
    status=quarantined?200:409;data={quarantined,noAutoRetry:true,send:false,noEmailSent:true};
