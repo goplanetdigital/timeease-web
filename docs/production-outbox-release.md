@@ -4,6 +4,15 @@ No Production configuration/database/workflow was changed. Preview business
 routes remain closed; the accepted exact-ID synthetic adapter and Outbox core
 are unchanged. Do not seed/reset/replay the eight terminal Preview fixtures.
 
+Persisted-delivery continuation: `GET /api/worker/delivery-artifact?intakeId=...`
+reads only an unattempted PENDING Outbox/Ledger pair with a PROCESSING order and
+no cancellation/refund hold. It streams the immutable private XLSX with bound
+attachment metadata and validates byte count/type. It neither claims nor sends.
+The inactive n8n candidate prioritizes `deliveryIntakeIds` and feeds the restored
+artifact through the same Outbox claim, lease and receipt boundary. A failed
+download or invalid binding never authorizes a provider call. Preview remains
+closed by the existing Production release gates; no credentials are moved.
+
 ## Scope and default-closed configuration
 
 Target of a future separately approved release: existing public
