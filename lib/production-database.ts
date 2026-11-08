@@ -5,7 +5,9 @@ export type TransactionClient=Pick<PoolClient,'query'>;
 export type DatabasePurpose='worker'|'payment';
 export function productionConnection(purpose:DatabasePurpose,env:NodeJS.ProcessEnv=process.env):string{
  if(!productionReleaseBound(env))throw Error('PRODUCTION_RELEASE_NOT_BOUND');
- const raw=purpose==='worker'?env.TIMEEASE_WORKER_DATABASE_URL:env.TIMEEASE_DB_DATABASE_URL;
+ // Keep purpose credentials independent; never fall back to the shared legacy
+ // URL or rewrite its Preview/Production scopes at runtime.
+ const raw=purpose==='worker'?env.TIMEEASE_WORKER_DATABASE_URL:env.TIMEEASE_PAYMENT_DATABASE_URL;
  let url:URL;try{url=new URL(raw||'');}catch{throw Error('PRODUCTION_DATABASE_NOT_CONFIGURED');}
  const role=purpose==='worker'?'timeease_worker_limited':'timeease_payment_limited';
  if(!['postgres:','postgresql:'].includes(url.protocol)||decodeURIComponent(url.username)!==role||

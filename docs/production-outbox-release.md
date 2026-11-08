@@ -15,6 +15,17 @@ neondb, verified from the live SQL connection before order access. Worker and
 payment URLs must name their distinct limited roles and use verified TLS.
 There is no payment-owner URL fallback and no runtime migration/role repair.
 
+Payment configuration continuation: formal payment/reversal transactions now
+require `TIMEEASE_PAYMENT_DATABASE_URL`; Worker transactions still require
+`TIMEEASE_WORKER_DATABASE_URL`. The shared legacy `TIMEEASE_DB_DATABASE_URL`
+is never used as their fallback and is not rewritten. This resolves the code
+configuration collision without moving or replacing any existing secret.
+No new Production variable is created by this change. A future operator must
+stage the dedicated payment URL with `timeease_payment_limited`, exact branch
+identity and verified TLS before a separately approved release. Missing the
+new variable fails closed. Only the new key-selection tests run; existing
+Outbox, payment-state, role/TLS and Preview PASS suites remain unchanged.
+
 New opt-ins (all currently absent/false, no config writes in this change):
 `TIMEEASE_V2_OUTBOX_ENABLED=true`, exact `TIMEEASE_RELEASE_COMMIT_SHA` matching
 `VERCEL_GIT_COMMIT_SHA`, `TIMEEASE_RELEASE_ACCEPTING_WORK=true` and
