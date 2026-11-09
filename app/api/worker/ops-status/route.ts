@@ -1,5 +1,8 @@
+import {verifyProductionPool} from "../../../../lib/production-database";
+import {productionReleaseBound,acceptingProductionWork} from "../../../../lib/production-release";
 import {createHash,timingSafeEqual} from "node:crypto";
 import {Pool} from "pg";
+import {productionConnection} from "../../../../lib/production-database";
 import {NextRequest,NextResponse} from "next/server";
 
 export const runtime="nodejs";
@@ -20,13 +23,16 @@ function reply(body:unknown,status=200){
 
 /** Private, read-only operational view; never expose order IDs or customer data. */
 export async function GET(req:NextRequest){
+ if(!productionReleaseBound())return NextResponse.json({error:"PRODUCTION_RELEASE_CLOSED"},{status:503,headers:{"Cache-Control":"no-store"}});
  const secret=process.env.TIMEEASE_V2_WORKER_SECRET;
  if(!secret||secret.length<32)return reply({error:"NOT_CONFIGURED"},503);
  if(!authorized(req,secret))return reply({error:"UNAUTHORIZED"},401);
- const connectionString=process.env.TIMEEASE_DB_DATABASE_URL;
- if(!connectionString)return reply({error:"LEDGER_NOT_CONFIGURED"},503);
+ let connectionString:string;
+ try{connectionString=productionConnection("worker");}
+ catch(error){return reply({error:error instanceof Error&&error.message==="WORKER_DATABASE_NOT_CONFIGURED"?"LEDGER_NOT_CONFIGURED":"WORKER_DATABASE_ROLE_FORBIDDEN"},503);}
  const pool=new Pool({connectionString,max:1,connectionTimeoutMillis:3500,idleTimeoutMillis:1000});
  try{
+  await verifyProductionPool(pool);
   const result=await pool.query<{status:string;count:string}>(
    "SELECT status,COUNT(*)::text AS count FROM public.timeease_v2_orders GROUP BY status"
   );
@@ -44,7 +50,11 @@ export async function GET(req:NextRequest){
   }
   const counts:Record<string,number>=Object.create(null);
   for(const row of result.rows)counts[row.status]=Number(row.count);
+  const outbox=await pool.query("SELECT status,count(*)::int AS count FROM public.timeease_fulfillment_outbox GROUP BY status");
+  const ledger=await pool.query("SELECT status,count(*)::int AS count FROM public.timeease_delivery_ledger GROUP BY status");
+  const expired=await pool.query("SELECT count(*)::int AS count FROM public.timeease_fulfillment_outbox WHERE status='PROCESSING' AND lease_until<=now()");
   return reply({
+   acceptingWork:acceptingProductionWork(),outbox:outbox.rows,deliveryLedger:ledger.rows,expiredLeases:expired.rows[0].count,
    ledgerReachable:true,
    ledgerEnabled:process.env.TIMEEASE_V2_PAYMENT_LEDGER_ENABLED==="true",
    checkoutEnabled:process.env.TIMEEASE_V2_CHECKOUT_ENABLED==="true",

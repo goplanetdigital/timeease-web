@@ -1,3 +1,6 @@
+import {acceptingProductionWork} from "../../../lib/production-release";
+import {blobAccessConfigured,blobAccessOptions} from "../../../lib/blob-access";
+import {previewBlobAccessBlocked} from "../../../lib/preview-blob-guard";
 import {get} from "@vercel/blob";
 import {INTERNAL_E2E_USD1,assertInternalE2EPrice} from "../../../lib/internal-e2e-pricing";
 import {createHash,timingSafeEqual} from "node:crypto";
@@ -10,9 +13,12 @@ import {paymentLedgerSchemaReady} from "../../../lib/payment-ledger-schema-ready
 export const runtime="nodejs";
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export async function POST(req:NextRequest){
+ if(process.env.VERCEL_ENV!=="preview"&&!acceptingProductionWork())return NextResponse.json({error:"PRODUCTION_RELEASE_CLOSED"},{status:503});
+ if(previewBlobAccessBlocked(process.env))return NextResponse.json({error:"PREVIEW_BLOB_ISOLATION_REQUIRED"},{status:503,headers:{"Cache-Control":"no-store"}});
  try{
   const {id,testMode}=await req.json();
   const requestedTest=testMode===true;
+  if(requestedTest)return NextResponse.json({error:"INTERNAL_CHECKOUT_DISABLED"},{status:503});
   let authorizedTest=false;
   if(requestedTest){
    const expected=process.env.TIMEEASE_V2_WORKER_SECRET;
@@ -25,10 +31,11 @@ export async function POST(req:NextRequest){
   }
   if(typeof id!=="string"||!ID.test(id))
    return NextResponse.json({error:"INVALID_INTAKE_ID"},{status:400});
-  if(!process.env.BLOB_READ_WRITE_TOKEN)
+  if(!blobAccessConfigured(process.env))
    return NextResponse.json({error:"STORAGE_NOT_CONFIGURED"},{status:503});
+  const blobOptions=await blobAccessOptions(process.env);
   // Never accept quote, variant, or payment status from the browser.
-  const blob=await get("intake-v2/"+id+"/manifest.json",{access:"private",token:process.env.BLOB_READ_WRITE_TOKEN});
+  const blob=await get("intake-v2/"+id+"/manifest.json",{access:"private",...blobOptions});
   if(!blob||!blob.stream)return NextResponse.json({error:"INTAKE_NOT_FOUND"},{status:404});
   const reader=blob.stream.getReader();
   const chunks:Uint8Array[]=[];

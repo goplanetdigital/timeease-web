@@ -1,3 +1,5 @@
+import {withProductionOrder} from "../../../../lib/production-database";
+import {productionReleaseBound,acceptingProductionWork} from "../../../../lib/production-release";
 import {createHash,timingSafeEqual} from "node:crypto";
 import {NextRequest,NextResponse} from "next/server";
 import {claimPaidJob} from "../../../../lib/paid-job-claim";
@@ -16,6 +18,7 @@ function authorized(req:NextRequest,secret:string):boolean{
 }
 /** Only an authenticated private worker can claim an already verified paid order. */
 export async function POST(req:NextRequest){
+ if(!acceptingProductionWork())return NextResponse.json({error:"PRODUCTION_RELEASE_CLOSED"},{status:503,headers:{"Cache-Control":"no-store"}});
  const secret=process.env.TIMEEASE_V2_WORKER_SECRET;
  if(!secret||secret.length<32||process.env.TIMEEASE_V2_PAYMENT_LEDGER_ENABLED!=="true")
   return response({error:"WORKER_NOT_CONFIGURED"},503);
@@ -32,7 +35,7 @@ export async function POST(req:NextRequest){
  const intakeId=(body&&typeof body==="object"&&"intakeId" in body)?(body as {intakeId:unknown}).intakeId:null;
  if(typeof intakeId!=="string"||!UUID.test(intakeId))return response({error:"INVALID_INTAKE_ID"},400);
  try{
-  const job=await claimPaidJob(intakeId);
+  const job=await withProductionOrder(intakeId,(client,held)=>held?Promise.resolve(null):claimPaidJob(intakeId,client));
   return job?response({status:"CLAIMED",job},200):response({status:"NOT_CLAIMABLE"},409);
  }catch{
   return response({error:"WORKER_LEDGER_UNAVAILABLE"},503);

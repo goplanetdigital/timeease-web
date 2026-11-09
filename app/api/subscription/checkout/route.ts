@@ -1,3 +1,4 @@
+import {stripeBillingReleased} from "../../../../lib/production-release";
 import { NextRequest, NextResponse } from "next/server";
 
 const stripeApi = "https://api.stripe.com/v1/checkout/sessions";
@@ -20,6 +21,7 @@ const planConfig = {
 type PlanKey = keyof typeof planConfig;
 
 export async function POST(request: NextRequest) {
+  if(!stripeBillingReleased())return NextResponse.json({error:"STRIPE_BILLING_NOT_RELEASED"},{status:503});
   const formData = await request.formData();
   const rawPlan = String(formData.get("plan") || "").toLowerCase();
   const plan = rawPlan as PlanKey;

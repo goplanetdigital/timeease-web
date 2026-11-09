@@ -1,0 +1,18 @@
+export const RESUME_PROJECT='prj_Wx1x2G8gOdvuhZqHd8goSZyvQ077';
+export const RESUME_HOST='ep-soft-morning-aokq5owy.c-2.ap-southeast-1.aws.neon.tech';
+export const RESUME_SHOP='timeease-pr20-resume-20261109.myshopify.com';
+export const RESUME_EMAIL='resume-inbox@example.invalid';
+export const RESUME_FIXTURES={
+ delivery:{id:'58e03e46-0331-414d-ab3c-9ba37ce613b1',order:'900000001109001'},
+ cancelled:{id:'4b0d8c10-add5-4c74-89d2-65603a9570a5',order:'900000001109002'},
+ refunded:{id:'44cab266-75a7-48e7-b46e-163c1c3eb774',order:'900000001109003'},
+ failure:{id:'03bcfb6f-5aeb-44c5-94fe-b1d12392ff78',order:'900000001109004'}
+} as const;
+export function resumeFixture(id:unknown){return Object.values(RESUME_FIXTURES).find(f=>f.id===id);}
+export function resumeRowMatches(row:Record<string,unknown>|undefined,id:string):boolean{
+ const f=resumeFixture(id);return Boolean(f&&row&&row.intake_id===f.id&&row.shopify_order_id===f.order&&
+ row.shopify_shop_domain===RESUME_SHOP&&row.variant_id==='synthetic-invoice'&&Number(row.amount_usd)===1&&
+ row.customer_email===RESUME_EMAIL&&row.source_manifest_path===`intake-v2/${id}/manifest.json`);
+}
+export const RESUME_XLSX_BASE64="UEsDBBQAAAAIAGOsaV09KLJo1QAAAPYBAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbK1RvW4CMQx+lVPWipgyMFQcS9u1dOAF3JyPiy5/ig093p5cSjtUCHXoZNnfr+TN/pyIm8m7wK0aRNITAJuBPLKOiUJB+pg9SlnzARKaEQ8Eq+VyDSYGoSALmT3UdvNCPR6dNK9TObONoVVFrprnL94c1SpMyVmDUmCYUbipy+T4jvAUul/tFtdmuigrhweb+OGasDtRzraj5h2zvKEvdjA5+Ix5/Ihx1Pdr3kiLfW8NddEcfZFoTpmw44FIvNN1ao82/CG/khnqePznIj/+3z2gvnt7AVBLAwQUAAAACABjrGld/luGcooAAADwAAAACwAAAF9yZWxzLy5yZWxzjc8xDsIwDAXQq1Q+QF0YGFDaiaUr4gImddqqTRw5QZTbk7EgBkbrf70vmyuvlGcJaZpjqja/htTClHM8IyY7sadUS+RQEifqKZdTR4xkFxoZj01zQt0b0Jm9WfVDC9oPB6hur8j/2OLcbPki9uE55B8TX40ik46cW9hWfIoud5GlLihgZ/Djwe4NUEsDBBQAAAAIAGOsaV0Rk2uRlQAAAOcAAAAPAAAAeGwvd29ya2Jvb2sueG1sjY9NDoJADIWvMukBLLhwQYCVG9aeYByKM4H5SVuj3l4CsnfVvvfS76XtK/N8z3k277gk6cCrlgZRnKdo5ZQLpTWZMkerq+QHSmGyo3gijQueq+qC0YYEO6Hhfxh5moKja3bPSEl3CNNiNeQkPhSBvt0a5DdNspE6uH2SetLgwGz2MHZQg+EmrAsPYw3Yt3hc4vFc/wVQSwMEFAAAAAgAY6xpXbZUqs+OAAAA8QAAABoAAAB4bC9fcmVscy93b3JrYm9vay54bWwucmVsc43PPQ7CMAwF4KtUOUDdMjCgJhNLV8QFotRtojY/so2A2xMxoCIxMFl+lr4nDxfcrISc2IfCzSNuibXyIuUEwM5jtNzmgqle5kzRSl1pgWLdaheEQ9cdgfaGMsPebMZJKxqnXjXXZ8F/7DzPweE5u1vEJD8q4J5pZY8oFbW0oGj1iRjeo2+rqsAM8PWheQFQSwMEFAAAAAgAY6xpXV3VEAWVAAAAxQAAABgAAAB4bC93b3Jrc2hlZXRzL3NoZWV0MS54bWxNjlEOwjAIhq/S9ADS7mGJpmtioifQCzQTXePaLoCZx5f5YHzgD3zwA2Ft9OQJUcy7zJUHO4ksBwAeJyyJd23Bqp17o5JES3oAL4Tp9jWVGTrneigpVxvDl52SpBiorYYG65WOW3L01shgc51zxYuQ8swxSLzmgufEaAj5VdB0ruu9d/sAEgNsMzBq6D7VvwPw+zx+AFBLAQIUAxQAAAAIAGOsaV09KLJo1QAAAPYBAAATAAAAAAAAAAAAAACAAQAAAABbQ29udGVudF9UeXBlc10ueG1sUEsBAhQDFAAAAAgAY6xpXf5bhnKKAAAA8AAAAAsAAAAAAAAAAAAAAIABBgEAAF9yZWxzLy5yZWxzUEsBAhQDFAAAAAgAY6xpXRGTa5GVAAAA5wAAAA8AAAAAAAAAAAAAAIABuQEAAHhsL3dvcmtib29rLnhtbFBLAQIUAxQAAAAIAGOsaV22VKrPjgAAAPEAAAAaAAAAAAAAAAAAAACAAXsCAAB4bC9fcmVscy93b3JrYm9vay54bWwucmVsc1BLAQIUAxQAAAAIAGOsaV1d1RAFlQAAAMUAAAAYAAAAAAAAAAAAAACAAUEDAAB4bC93b3Jrc2hlZXRzL3NoZWV0MS54bWxQSwUGAAAAAAUABQBFAQAADAQAAAAA";
+
