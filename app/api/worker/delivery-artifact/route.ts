@@ -7,12 +7,14 @@ import {productionConnection,verifyProductionPool} from '../../../../lib/product
 import {blobAccessConfigured,blobAccessOptions} from '../../../../lib/blob-access';
 import {previewBlobAccessBlocked} from '../../../../lib/preview-blob-guard';
 import {persistedDeliveryArtifact,XLSX_TYPE} from '../../../../lib/persisted-delivery-artifact';
+import {previewDeliveryArtifactGET} from '../../../../lib/isolated-delivery-acceptance';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 let pool:Pool|undefined;
 const reply=(error:string,status:number)=>NextResponse.json({error,send:false},{status,headers:{'Cache-Control':'no-store'}});
 /** Fetch an existing unsent attachment. Never claims, uploads, retries or sends. */
 export async function GET(req:NextRequest){
+ if(process.env.VERCEL_ENV==='preview')return previewDeliveryArtifactGET(req);
  if(!productionSendEnabled())return reply('PRODUCTION_RELEASE_CLOSED',503);
  if(previewBlobAccessBlocked(process.env)||!blobAccessConfigured(process.env))return reply('STORAGE_NOT_CONFIGURED',503);
  const secret=process.env.TIMEEASE_V2_WORKER_SECRET,auth=req.headers.get('authorization')||'';

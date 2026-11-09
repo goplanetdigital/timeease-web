@@ -9,6 +9,7 @@ import {requireV2OutboxSchema,publishV2Result,claimV2Outbox,completeV2Outbox,rec
 import {MOCK_DELIVERY_CASE,mockReceiptMatches} from '../../../../lib/preview-mock-delivery';
 import {isIsolatedNeonEndpoint,PREVIEW_NEON_BRANCH,PREVIEW_NEON_PROJECT} from '../../../../lib/test-worker-guards';
 import {recoverPreviewFailure} from '../../../../lib/preview-order-recovery';
+import {previewResumePOST} from '../../../../lib/isolated-delivery-acceptance';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 const MAX_BODY=1500000;
@@ -34,6 +35,7 @@ async function bytes(stream:ReadableStream<Uint8Array>,limit:number){
  * A reviewable fixture must be inserted separately; Worker permissions are unchanged.
  */
 export async function POST(req:NextRequest){
+ if(req.headers.get('x-timeease-preview-resume')==='v1')return previewResumePOST(req);
  const env=process.env;
  if(!previewAuthEnvironment(env,new URL(req.url).hostname))return reply({error:'PREVIEW_TEST_ONLY'},404);
  const secret=env.TIMEEASE_TEST_WORKER_SECRET,auth=req.headers.get('authorization')||'';

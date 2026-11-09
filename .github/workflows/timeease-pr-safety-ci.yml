@@ -34,9 +34,11 @@ jobs:
       - name: Reuse accepted reversal ingress evidence
         run: git diff --exit-code 546f00ac4eeda0e45c22fa755669fd8178f64533 HEAD -- lib/preview-shopify-reversal.ts app/api/test-worker/shopify-reversal/route.ts tests/preview-reversal-ingress.test.mjs
       - name: Reuse accepted mock-receipt evidence
-        run: git diff --exit-code 97bf29d8fef352d80a0eb678e8380b44d45a67a0 HEAD -- lib/preview-mock-delivery.ts lib/preview-order-fixture.ts app/api/test-worker/order-e2e/route.ts tests/preview-mock-receipt.test.mjs
-      - name: Verify new persisted attachment read boundary only
-        run: node --test tests/persisted-delivery-artifact.test.mjs tests/n8n-persisted-artifact.test.mjs
+        run: git diff --exit-code 97bf29d8fef352d80a0eb678e8380b44d45a67a0 HEAD -- lib/preview-mock-delivery.ts lib/preview-order-fixture.ts tests/preview-mock-receipt.test.mjs
+      - name: Reuse accepted persisted-read and binary contracts
+        run: git diff --exit-code 66696c8996fa1fa9347377efa103df83562950e4 HEAD -- lib/persisted-delivery-artifact.ts lib/n8n-persisted-artifact.mjs tests/persisted-delivery-artifact.test.mjs tests/n8n-persisted-artifact.test.mjs
+      - name: Verify new isolated routing and synthetic acceptance only
+        run: node --test tests/isolated-delivery-acceptance.test.mjs
       - name: Typecheck
         run: npx tsc --noEmit
       - name: Production build

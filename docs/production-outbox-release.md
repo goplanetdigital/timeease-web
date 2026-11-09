@@ -13,6 +13,16 @@ artifact through the same Outbox claim, lease and receipt boundary. A failed
 download or invalid binding never authorizes a provider call. Preview remains
 closed by the existing Production release gates; no credentials are moved.
 
+Isolated acceptance dispatch: the artifact GET has a separate Preview-only
+branch for exactly three new synthetic IDs. It requires the fixed isolated
+project, branch, hostname, Blob store, existing test bearer, native verified TLS
+and Preview limited-role identity. It uses the same persisted-artifact SELECT
+and stream checks. Production continues through its unchanged release gate.
+The diagnostic POST header `x-timeease-preview-resume: v1` selects a bounded
+fixture driver: fixed synthetic setup/status and mock receipt only, never a
+provider sender or caller-selected order/path. Old fixture behavior is retained
+and checked byte-for-byte after removing only these isolated dispatch lines.
+
 ## Scope and default-closed configuration
 
 Target of a future separately approved release: existing public
