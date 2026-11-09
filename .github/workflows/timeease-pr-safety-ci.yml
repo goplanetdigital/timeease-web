@@ -37,8 +37,10 @@ jobs:
         run: git diff --exit-code 97bf29d8fef352d80a0eb678e8380b44d45a67a0 HEAD -- lib/preview-mock-delivery.ts lib/preview-order-fixture.ts tests/preview-mock-receipt.test.mjs
       - name: Reuse accepted persisted-read and binary contracts
         run: git diff --exit-code 66696c8996fa1fa9347377efa103df83562950e4 HEAD -- lib/persisted-delivery-artifact.ts lib/n8n-persisted-artifact.mjs tests/persisted-delivery-artifact.test.mjs tests/n8n-persisted-artifact.test.mjs
-      - name: Verify new isolated routing and synthetic acceptance only
-        run: node --test tests/isolated-delivery-acceptance.test.mjs
+      - name: Reuse accepted isolated download evidence
+        run: git diff --exit-code 2c17851aa8eae522793e8ba5231d25a982c31ad2 HEAD -- app/api/worker/delivery-artifact/route.ts app/api/test-worker/order-e2e/route.ts lib/isolated-delivery-fixtures.ts tests/isolated-delivery-acceptance.test.mjs
+      - name: Verify protected stable alias and exact commit binding only
+        run: node --test tests/isolated-preview-alias.test.mjs
       - name: Typecheck
         run: npx tsc --noEmit
       - name: Production build

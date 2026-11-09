@@ -11,14 +11,16 @@ import {claimPaidJob} from './paid-job-claim';
 import {requireV2OutboxSchema,publishV2Result,claimV2Outbox,completeV2Outbox,inspectV2Outbox} from './v2-delivery-outbox';
 import {mockReceiptMatches} from './preview-mock-delivery';
 import {RESUME_PROJECT,RESUME_HOST,RESUME_FIXTURES,RESUME_XLSX_BASE64,resumeFixture,resumeRowMatches} from './isolated-delivery-fixtures';
+import {canonicalPreviewHost,previewAliasCommitMatches} from './isolated-preview-alias';
 const reply=(body:unknown,status:number)=>NextResponse.json(body,{status,headers:{'Cache-Control':'no-store'}});
 export function resumeEnvironment(env:NodeJS.ProcessEnv,host:string):boolean{
- return previewOrderEnvironment(env,host)&&env.VERCEL_PROJECT_ID===RESUME_PROJECT&&
+ return previewOrderEnvironment(env,canonicalPreviewHost(env,host))&&env.VERCEL_PROJECT_ID===RESUME_PROJECT&&
   env.TIMEEASE_PREVIEW_BLOB_STORE_ID===PREVIEW_BLOB_STORE;
 }
 function entry(req:NextRequest):NextResponse|null{
  if(!resumeEnvironment(process.env,new URL(req.url).hostname))return reply({error:'ISOLATED_PREVIEW_REQUIRED',send:false},404);
  if(!reversalBearer(req.headers.get('authorization')||'',process.env.TIMEEASE_TEST_WORKER_SECRET))return reply({error:'UNAUTHORIZED',send:false},401);
+ if(!previewAliasCommitMatches(process.env,new URL(req.url).hostname,req.headers))return reply({error:'PREVIEW_COMMIT_MISMATCH',send:false},409);
  return null;
 }
 async function connection(readOnly:boolean){

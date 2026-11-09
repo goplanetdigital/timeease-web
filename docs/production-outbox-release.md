@@ -23,6 +23,14 @@ fixture driver: fixed synthetic setup/status and mock receipt only, never a
 provider sender or caller-selected order/path. Old fixture behavior is retained
 and checked byte-for-byte after removing only these isolated dispatch lines.
 
+The existing protected isolated branch alias can be used for this fixed-fixture
+driver and artifact GET. Its exact hostname is allowlisted in code; normal
+Preview/project/branch/Blob/DB/bearer guards remain mandatory. Alias requests
+also require `x-timeease-preview-commit` equal to the deployed 40-character SHA
+before any database or Blob access. A deployment moving the alias therefore
+fails closed until the reviewed test workflow binds the new SHA. Original
+immutable-host authentication endpoints and Production gates are unchanged.
+
 ## Scope and default-closed configuration
 
 Target of a future separately approved release: existing public
