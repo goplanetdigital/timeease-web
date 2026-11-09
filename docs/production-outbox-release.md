@@ -31,6 +31,13 @@ before any database or Blob access. A deployment moving the alias therefore
 fails closed until the reviewed test workflow binds the new SHA. Original
 immutable-host authentication endpoints and Production gates are unchanged.
 
+Signed fixed synthetic HOLD acceptance reuses the existing Preview reversal
+login and sets the local role to `timeease_payment_limited`, as the accepted
+reversal adapter does. No owner-role fallback or new credential/grant is used.
+The public synthetic signing key is not a Live-secret pairing test. A fourth
+fixed failure fixture verifies known-before-provider failure quarantine and
+no automatic resend; accepted expired-lease core evidence is reused.
+
 ## Scope and default-closed configuration
 
 Target of a future separately approved release: existing public

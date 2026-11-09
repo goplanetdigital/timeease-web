@@ -5,7 +5,8 @@ export const RESUME_EMAIL='resume-inbox@example.invalid';
 export const RESUME_FIXTURES={
  delivery:{id:'58e03e46-0331-414d-ab3c-9ba37ce613b1',order:'900000001109001'},
  cancelled:{id:'4b0d8c10-add5-4c74-89d2-65603a9570a5',order:'900000001109002'},
- refunded:{id:'44cab266-75a7-48e7-b46e-163c1c3eb774',order:'900000001109003'}
+ refunded:{id:'44cab266-75a7-48e7-b46e-163c1c3eb774',order:'900000001109003'},
+ failure:{id:'03bcfb6f-5aeb-44c5-94fe-b1d12392ff78',order:'900000001109004'}
 } as const;
 export function resumeFixture(id:unknown){return Object.values(RESUME_FIXTURES).find(f=>f.id===id);}
 export function resumeRowMatches(row:Record<string,unknown>|undefined,id:string):boolean{
