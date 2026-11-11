@@ -1,0 +1,15 @@
+{
+  "job_id": "TE-YYYYMMDD-001",
+  "repository": "owner/repo",
+  "task": "",
+  "acceptance_criteria": [],
+  "allowed_scope": [],
+  "forbidden_scope": [
+    "production billing changes",
+    "secrets and credentials",
+    "unrelated repositories"
+  ],
+  "delivery_type": "pull_request",
+  "customer_deadline": null,
+  "notes": ""
+}
